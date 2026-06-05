@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Revival.Models;
 using Revival.Services;
 
 namespace Revival.Controllers;
