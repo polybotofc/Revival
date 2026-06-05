@@ -82,7 +82,7 @@ public class GameService
         {
             Name = name,
             Description = description,
-            CreatorId = place.CreatorId ?? 1,
+            CreatorId = creatorId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -181,12 +181,16 @@ public class GameService
         var place = await GetPlaceByIdAsync(placeId);
         if (place == null) return null;
 
+        // Get game to access creator ID
+        var game = await _context.Games.FindAsync(place.GameId);
+        var gameCreatorId = game?.CreatorId ?? creatorId;
+
         // Call RCCService to create server
         var (success, serverId, jobId, address, port, error) = await _rccManager.CreateGameServerAsync(
             placeId, 
             place.FilePath, 
             place.MaxPlayers,
-            place.CreatorId ?? 1);
+            gameCreatorId);
 
         if (!success || serverId == null)
         {
@@ -202,8 +206,8 @@ public class GameService
             ServerId = serverId,
             PlaceId = placeId,
             GameId = place.GameId,
-            CreatorId = place.CreatorId ?? 1,
-            Host = connInfo?.Address ?? "localhost",
+            CreatorId = gameCreatorId,
+            Host = connInfo?.Address ?? address ?? "localhost",
             Port = connInfo?.Port ?? port,
             RCCJobId = jobId,
             RCCServerUrl = connInfo?.Address ?? address,

@@ -110,7 +110,7 @@ public class AccountController : Controller
         _logger.LogInformation("New user registered: {Username}", model.Username);
 
         // Auto-login after registration
-        var (loginSuccess, loginError, session, user) = await _authService.LoginAsync(
+        var (loginSuccess, loginError, session, loggedInUser) = await _authService.LoginAsync(
             model.Username,
             model.Password,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
