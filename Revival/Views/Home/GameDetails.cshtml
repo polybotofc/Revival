@@ -1,0 +1,248 @@
+@*
+    Game details page view
+    Shows detailed information about a specific game with Play button
+*@
+@model Revival.Models.Game
+@{
+    ViewData["Title"] = Model?.Name ?? "Game";
+    Layout = "_Layout";
+}
+
+<div class="game-details-page">
+    <div class="container">
+        @if (Model != null)
+        {
+            <div class="game-hero">
+                <div class="game-thumbnail">
+                    <img src="/thumbs/game?gameId=@Model.Id" alt="@Model.Name" onerror="this.src='/images/default-game.png'" />
+                </div>
+                <div class="game-info">
+                    <h1>@Model.Name</h1>
+                    <p class="game-creator">Created by <a href="/Profile/@Model.Creator?.Username">@Model.Creator?.Username</a></p>
+                    <p class="game-description">@Model.Description</p>
+                    <div class="game-stats">
+                        <div class="stat">
+                            <span class="stat-value">@Model.ActivePlayers</span>
+                            <span class="stat-label">Playing Now</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">@Model.TotalPlays.ToString("N0")</span>
+                            <span class="stat-label">Total Plays</span>
+                        </div>
+                    </div>
+                    
+                    @if (Model.Places != null && Model.Places.Any())
+                    {
+                        var firstPlace = Model.Places.First();
+                        <button class="btn btn-play-large" onclick="playGame(@firstPlace.Id)">
+                            Play
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-play-large" disabled>No Playable Places</button>
+                    }
+                </div>
+            </div>
+
+            <div class="game-content">
+                <section class="places-section">
+                    <h2>Places</h2>
+                    @if (Model.Places != null && Model.Places.Any())
+                    {
+                        <div class="places-list">
+                            @foreach (var place in Model.Places)
+                            {
+                                <div class="place-card">
+                                    <div class="place-info">
+                                        <h3>@place.Name</h3>
+                                        <p>Max Players: @place.MaxPlayers</p>
+                                    </div>
+                                    <button class="btn btn-secondary" onclick="playGame(@place.Id)">Play</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="no-places">This game has no places yet.</p>
+                    }
+                </section>
+            </div>
+        }
+        else
+        {
+            <div class="not-found">
+                <h2>Game Not Found</h2>
+                <p>The game you're looking for doesn't exist or has been removed.</p>
+                <a href="/Home/Games" class="btn btn-primary">Browse Games</a>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function playGame(placeId) {
+            // Redirect to login if not authenticated, otherwise launch game
+            fetch('/Account/CheckAuth')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.authenticated) {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent('/Game/PlaceLauncher.ashx?placeId=' + placeId);
+                    } else {
+                        // Launch game via PlaceLauncher endpoint
+                        window.location.href = '/Game/PlaceLauncher.ashx?placeId=' + placeId;
+                    }
+                });
+        }
+    </script>
+}
+
+<style>
+    .game-details-page {
+        padding: 2rem 0;
+    }
+    
+    .game-hero {
+        display: flex;
+        gap: 2rem;
+        background: #1a1a2e;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    
+    .game-thumbnail {
+        flex-shrink: 0;
+        width: 400px;
+        aspect-ratio: 16/9;
+        background: #0f0f23;
+    }
+    
+    .game-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .game-info {
+        padding: 1.5rem;
+        flex: 1;
+    }
+    
+    .game-info h1 {
+        color: #fff;
+        margin-bottom: 0.5rem;
+    }
+    
+    .game-creator {
+        color: #666;
+        margin-bottom: 1rem;
+    }
+    
+    .game-creator a {
+        color: #e94560;
+    }
+    
+    .game-description {
+        color: #aaa;
+        margin-bottom: 1.5rem;
+    }
+    
+    .game-stats {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat {
+        text-align: center;
+    }
+    
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #e94560;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .btn-play-large {
+        background: #4caf50;
+        color: #fff;
+        border: none;
+        padding: 1rem 3rem;
+        border-radius: 25px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-play-large:hover {
+        background: #66bb6a;
+        transform: scale(1.05);
+    }
+    
+    .btn-play-large:disabled {
+        background: #666;
+        cursor: not-allowed;
+    }
+    
+    .game-content h2 {
+        color: #fff;
+        margin-bottom: 1rem;
+    }
+    
+    .places-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .place-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1a1a2e;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+    }
+    
+    .place-info h3 {
+        color: #fff;
+        margin-bottom: 0.25rem;
+    }
+    
+    .place-info p {
+        color: #666;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .not-found {
+        text-align: center;
+        padding: 4rem;
+        color: #666;
+    }
+    
+    .not-found h2 {
+        color: #aaa;
+        margin-bottom: 1rem;
+    }
+    
+    @@media (max-width: 768px) {
+        .game-hero {
+            flex-direction: column;
+        }
+        
+        .game-thumbnail {
+            width: 100%;
+        }
+    }
+</style>

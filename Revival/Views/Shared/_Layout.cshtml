@@ -1,0 +1,55 @@
+@*
+    Shared layout for Roblox Revival website
+    Provides consistent header, navigation, and footer across all pages
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Roblox Revival</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <div class="navbar-brand">
+                    <a href="/">Roblox Revival</a>
+                </div>
+                <ul class="navbar-menu">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/Home/Games">Games</a></li>
+                    <li><a href="/Profile">Profile</a></li>
+                </ul>
+                <div class="navbar-user">
+                    @if (Context.Request.Cookies["RevivalSession"] != null)
+                    {
+                        <a href="/Profile" class="btn btn-primary">My Profile</a>
+                        <form method="post" action="/Account/Logout" style="display:inline;">
+                            <button type="submit" class="btn btn-secondary">Logout</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a href="/Account/Login" class="btn btn-primary">Login</a>
+                        <a href="/Account/Register" class="btn btn-secondary">Register</a>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Roblox Revival. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js"></script>
+</body>
+</html>

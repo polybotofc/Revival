@@ -1,0 +1,163 @@
+@*
+    Edit profile page view
+    Allows users to update their profile information
+*@
+@model Revival.Controllers.EditProfileViewModel
+@{
+    ViewData["Title"] = "Edit Profile";
+    Layout = "_Layout";
+}
+
+<div class="edit-profile-container">
+    <div class="edit-profile-card">
+        <h1>Edit Profile</h1>
+        
+        <form method="post" action="/Profile/Edit">
+            @Html.AntiForgeryToken()
+            
+            <div class="form-group">
+                <label for="DisplayName">Display Name</label>
+                <input type="text" id="DisplayName" name="DisplayName" value="@Model?.DisplayName" 
+                       maxlength="255" class="form-control" />
+                <small>This is how your name appears to other players</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="Description">About Me</label>
+                <textarea id="Description" name="Description" rows="4" maxlength="500" 
+                          class="form-control">@Model?.Description</textarea>
+                <small>Tell other players about yourself (max 500 characters)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="AvatarAssetId">Avatar Asset ID</label>
+                <input type="number" id="AvatarAssetId" name="AvatarAssetId" 
+                       value="@Model?.AvatarAssetId" class="form-control" />
+                <small>Enter the asset ID for your avatar image</small>
+            </div>
+            
+            @if (ViewData.ModelState.ErrorCount > 0)
+            {
+                <div class="alert alert-error">
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <p>@error.ErrorMessage</p>
+                    }
+                </div>
+            }
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="/Profile" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .edit-profile-container {
+        display: flex;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    .edit-profile-card {
+        background: #1a1a2e;
+        padding: 2rem;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .edit-profile-card h1 {
+        color: #fff;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-group label {
+        display: block;
+        color: #aaa;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group small {
+        display: block;
+        color: #666;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #16213e;
+        color: #fff;
+        font-size: 1rem;
+        font-family: inherit;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #e94560;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-error {
+        background: rgba(233, 69, 96, 0.2);
+        border: 1px solid #e94560;
+        color: #e94560;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: #e94560;
+        color: #fff;
+    }
+    
+    .btn-primary:hover {
+        background: #ff6b8a;
+    }
+    
+    .btn-secondary {
+        background: #333;
+        color: #fff;
+    }
+    
+    .btn-secondary:hover {
+        background: #444;
+    }
+</style>
