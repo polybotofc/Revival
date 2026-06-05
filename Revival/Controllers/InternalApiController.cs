@@ -195,9 +195,9 @@ public class InternalApiController : ControllerBase
     /// <summary>
     /// Gets the current authenticated user from session.
     /// </summary>
-    private async Task<(bool IsAuthenticated, Session? Session, User? User)> GetAuthenticatedUserAsync()
+    private async Task<(bool IsAuthenticated, UserSession? Session, User? User)> GetAuthenticatedUserAsync()
     {
-        var sessionToken = Request.Cookies["RevivalSession"];
+        var sessionToken = Request.Cookies["RevivalAuth"];
         
         if (string.IsNullOrEmpty(sessionToken))
         {

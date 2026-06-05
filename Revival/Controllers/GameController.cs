@@ -12,7 +12,7 @@ public class GameController : Controller
     private readonly GameService _gameService;
     private readonly AuthService _authService;
     private readonly ILogger<GameController> _logger;
-    private const string SessionCookieName = "RevivalSession";
+    private const string SessionCookieName = "RevivalAuth";
 
     public GameController(
         GameService gameService, 
@@ -173,7 +173,7 @@ public class GameController : Controller
     /// <summary>
     /// Gets the current authenticated user from session.
     /// </summary>
-    private async Task<(bool IsAuthenticated, Session? Session, User? User)> GetCurrentUserAsync()
+    private async Task<(bool IsAuthenticated, UserSession? Session, User? User)> GetCurrentUserAsync()
     {
         var sessionToken = Request.Cookies[SessionCookieName];
         

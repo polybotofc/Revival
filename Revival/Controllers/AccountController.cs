@@ -12,7 +12,7 @@ public class AccountController : Controller
 {
     private readonly AuthService _authService;
     private readonly ILogger<AccountController> _logger;
-    private const string SessionCookieName = "RevivalSession";
+    private const string SessionCookieName = "RevivalAuth";
 
     public AccountController(AuthService authService, ILogger<AccountController> logger)
     {
@@ -42,7 +42,7 @@ public class AccountController : Controller
             return View(model);
         }
 
-        var (success, error, session) = await _authService.LoginAsync(
+        var (success, error, session, user) = await _authService.LoginAsync(
             model.Username, 
             model.Password,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
@@ -221,12 +221,14 @@ public class AccountController : Controller
             user.Id, 
             model.DisplayName, 
             model.Description,
+            model.Location,
+            model.Website,
             model.AvatarAssetId);
 
         if (success)
         {
             _logger.LogInformation("Profile updated for user {UserId}", user.Id);
-            return RedirectToAction("Profile");
+            return RedirectToAction("Profile", "Profile", new { username = user.Username });
         }
 
         ModelState.AddModelError(string.Empty, "Failed to update profile");
@@ -252,7 +254,7 @@ public class AccountController : Controller
     /// <summary>
     /// Gets the current authenticated user from session.
     /// </summary>
-    private async Task<(bool IsAuthenticated, Session? Session, User? User)> GetCurrentUserAsync()
+    private async Task<(bool IsAuthenticated, UserSession? Session, User? User)> GetCurrentUserAsync()
     {
         var sessionToken = Request.Cookies[SessionCookieName];
         
@@ -305,6 +307,12 @@ public class EditProfileViewModel
 
     [StringLength(500)]
     public string? Description { get; set; }
+
+    [StringLength(100)]
+    public string? Location { get; set; }
+
+    [StringLength(100)]
+    public string? Website { get; set; }
 
     public int? AvatarAssetId { get; set; }
 }
