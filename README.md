@@ -1,147 +1,114 @@
-# Roblox Revival - ASP.NET Core 8 MVC Project
+# Roblox Revival Platform
 
-Proyek Roblox Revival adalah implementasi server website untuk platform game multiplayer, menggunakan ASP.NET Core 8 MVC dan MySQL.
+A complete ASP.NET Core 8 MVC implementation for a Roblox-style multiplayer game platform with MySQL database support.
 
-## Fitur
+**Target Roblox Client Version: 0.338.0.202976 (May 2018)**
 
-### Autentikasi
-- Register, Login, Logout
-- Session management dengan authentication ticket
-- Profile management
+## Features
 
-### Game System
-- Daftar game publik
-- Game server management
-- Place launcher untuk client Roblox
+### Core Features
+- **User Authentication**: Register, Login, Logout with secure session tickets
+- **Profile Management**: View and edit user profiles with avatars
+- **Game System**: Create, browse, and play games
+- **Asset Delivery**: Serve game assets, avatars, and thumbnails
+- **Game Server Management**: Create and manage game servers via RCCService
+- **Place Launcher**: Launch game places with Roblox client compatibility
 
-### Asset Delivery
-- `/asset/?id=` - Delivery asset berdasarkan ID
-- `/thumbs/avatar` - Avatar thumbnail user
-- `/thumbs/game` - Game thumbnail
+### Technical Stack
+- ASP.NET Core 8 MVC
+- Entity Framework Core 8
+- MySQL (via Pomelo.EntityFrameworkCore.MySql)
+- Bootstrap 5 for responsive UI
+- Cookie-based session authentication
+- RCCService integration for game server management
 
-### Game Endpoints (Roblox Client)
-- `/Game/Join.ashx` - Join game dan dapatkan server info
-- `/Game/PlaceLauncher.ashx` - Launch place dan connect ke server
-
-### RCCService Integration
-- Membuat game server baru
-- Menghentikan game server
-- Eksekusi Lua script
-- Status monitoring
-
-## Struktur Folder
+## Project Structure
 
 ```
 Revival/
-├── Controllers/
-│   ├── AccountController.cs      # Autentikasi (login, register, logout)
-│   ├── AssetController.cs        # Asset delivery system
-│   ├── GameController.cs         # Game endpoints (Join.ashx, PlaceLauncher.ashx)
-│   ├── HomeController.cs         # Halaman utama
-│   ├── InternalApiController.cs  # Internal API untuk RCCService
-│   └── ProfileController.cs       # Profile management
+├── Controllers/                    # MVC Controllers
+│   ├── AccountController.cs        # Authentication (Login, Register, Logout)
+│   ├── AssetController.cs          # Asset Delivery System
+│   ├── GameController.cs           # Game Endpoints (Join.ashx, PlaceLauncher.ashx)
+│   ├── HomeController.cs          # Home & Games listing
+│   ├── InternalApiController.cs   # Internal API for RCCService
+│   └── ProfileController.cs        # User Profile management
 ├── Data/
-│   └── RevivalDbContext.cs       # EF Core DbContext
+│   ├── RevivalDbContext.cs         # EF Core DbContext
+│   └── SeedData.cs                # Initial database seed data
+├── Middleware/
+│   └── RequestLoggingMiddleware.cs # HTTP request logging
 ├── Models/
-│   ├── Asset.cs                  # Asset model
+│   ├── User.cs                    # User model
+│   ├── UserSession.cs             # Session/Ticket model
 │   ├── Game.cs                   # Game model
-│   ├── GameServer.cs             # Game server model
 │   ├── Place.cs                  # Place model
-│   ├── Session.cs                # Session/ticket model
-│   └── User.cs                   # User model
+│   ├── Asset.cs                  # Asset model
+│   ├── GameServer.cs             # Game Server model
+│   └── GameServerPlayer.cs        # Player on server model
 ├── Services/
-│   ├── AssetService.cs           # Asset management service
-│   ├── AuthService.cs            # Authentication service
+│   ├── AuthService.cs             # Authentication service
 │   ├── GameService.cs            # Game management service
+│   ├── AssetService.cs           # Asset delivery service
 │   └── RCCManager.cs             # RCCService communication
-├── Views/
-│   ├── Account/
-│   │   ├── Login.cshtml
-│   │   └── Register.cshtml
-│   ├── Home/
-│   │   ├── Games.cshtml
-│   │   └── Index.cshtml
-│   ├── Profile/
-│   │   └── ViewProfile.cshtml
-│   └── Shared/
-│       └── _Layout.cshtml
-├── wwwroot/
-│   ├── css/site.css
-│   └── js/site.js
-├── appsettings.json
-└── Program.cs
+├── Views/                        # Razor Views
+├── Migrations/                   # EF Core migrations
+├── wwwroot/                      # Static files (CSS, JS, images)
+├── schema.sql                    # MySQL database schema
+├── appsettings.json              # Configuration
+└── Program.cs                    # Application entry point
 ```
 
 ## Database Schema
 
-### Users
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| Username | varchar(50) | Unique username |
-| Email | varchar(255) | User email |
-| PasswordHash | varchar(255) | Hashed password |
-| DisplayName | varchar(255) | Display name |
-| Description | varchar(500) | Bio/description |
-| CreatedAt | datetime | Account creation date |
-| LastLoginAt | datetime | Last login time |
-| IsBanned | bool | Ban status |
-| AvatarAssetId | int | Avatar asset ID |
+### Tables
+| Table | Description |
+|-------|-------------|
+| Users | User accounts with profile information |
+| Sessions | Authentication session tickets |
+| Games | Game/experience metadata |
+| Places | Game levels with .rbxl file paths |
+| Assets | Digital assets for delivery |
+| GameServers | Running game server instances |
+| GameServerPlayers | Player sessions on servers |
 
-### Sessions
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| SessionToken | varchar(64) | Unique session token |
-| UserId | int | FK to Users |
-| IpAddress | varchar(45) | Client IP |
-| CreatedAt | datetime | Session start |
-| ExpiresAt | datetime | Session expiration |
-| IsActive | bool | Active status |
+## API Endpoints
 
-### Games
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| Name | varchar(100) | Game name |
-| Description | varchar(1000) | Game description |
-| CreatorId | int | FK to Users |
-| TotalPlays | int | Total play count |
-| ActivePlayers | int | Current players |
-| IsPublic | bool | Public status |
+### Web Pages
+| Endpoint | Description |
+|---------|-------------|
+| `/` | Home page with game listings |
+| `/Home/Games` | Browse all games |
+| `/Home/GameDetails/{id}` | View game details |
+| `/Account/Login` | User login page |
+| `/Account/Register` | User registration page |
+| `/Profile/{username}` | View user profile |
+| `/Profile/Edit` | Edit profile |
 
-### Places
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| Name | varchar(100) | Place name |
-| GameId | int | FK to Games |
-| FilePath | varchar(500) | .rbxl file path |
-| MaxPlayers | int | Max players |
+### Game Endpoints (Roblox Client Compatible)
+| Endpoint | Description |
+|---------|-------------|
+| `/Game/Join.ashx?placeId=` | Join a game server |
+| `/Game/PlaceLauncher.ashx?placeId=` | Launch a place |
+| `/Game/GetGames` | Get games list (JSON) |
 
-### Assets
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| Name | varchar(100) | Asset name |
-| Type | enum | Asset type |
-| FilePath | varchar(500) | File path |
-| FileSize | long | File size |
-| ContentType | varchar(100) | MIME type |
-| Hash | varchar(255) | Content hash |
+### Asset Delivery
+| Endpoint | Description |
+|---------|-------------|
+| `/asset/?id=` | Deliver asset by ID |
+| `/thumbs/avatar?userId=` | Get user avatar thumbnail |
+| `/thumbs/game?gameId=` | Get game thumbnail |
 
-### GameServers
-| Column | Type | Description |
-|--------|------|-------------|
-| Id | int | Primary key |
-| ServerId | varchar(36) | Unique server ID |
-| PlaceId | int | FK to Places |
-| Host | varchar(45) | Server host |
-| Port | int | Server port |
-| Status | varchar(20) | Server status |
-| RCCJobId | varchar(500) | RCC job ID |
+### Internal API
+| Endpoint | Method | Description |
+|---------|--------|-------------|
+| `/api/internal/server/create` | POST | Create game server |
+| `/api/internal/server/stop` | POST | Stop game server |
+| `/api/internal/server/status/{id}` | GET | Get server status |
+| `/api/internal/game/join` | POST | Join game |
+| `/api/internal/script/execute` | POST | Execute Lua script |
 
-## Konfigurasi
+## Configuration
 
 ### appsettings.json
 ```json
@@ -150,79 +117,147 @@ Revival/
     "DefaultConnection": "Server=localhost;Port=3306;Database=Revival;User=root;Password=your_password;"
   },
   "RCCService": {
-    "Url": "http://localhost:3000",
-    "ApiKey": "",
-    "Timeout": 30
+    "Enabled": true,
+    "BaseUrl": "http://localhost:3000",
+    "TimeoutSeconds": 30
   },
   "Authentication": {
+    "CookieName": "RevivalAuth",
     "SessionExpirationHours": 24,
     "SecureCookies": false
+  },
+  "GameServer": {
+    "DefaultMaxPlayers": 50,
+    "ServerExpirationMinutes": 120
   }
 }
 ```
 
-## Cara Menjalankan
+## Getting Started
 
-### 1. Install Dependencies
+### Prerequisites
+- .NET 8 SDK
+- MySQL 8.0+
+- RCCService (optional, for full functionality)
+
+### Installation
+
+1. **Clone the repository**
 ```bash
-cd Revival
+git clone <repository-url>
+cd Revival/Revival
+```
+
+2. **Install dependencies**
+```bash
 dotnet restore
 ```
 
-### 2. Setup Database
-Pastikan MySQL berjalan dan buat database:
-```sql
-CREATE DATABASE Revival;
+3. **Configure MySQL**
+Update `appsettings.json` with your MySQL connection string:
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Server=localhost;Port=3306;Database=Revival;User=root;Password=your_password;"
+}
 ```
 
-Update connection string di `appsettings.json`.
+4. **Create the database**
+Option A: Use Entity Framework migrations
+```bash
+dotnet ef database update
+```
 
-### 3. Run Application
+Option B: Run the SQL script directly
+```bash
+mysql -u root -p < schema.sql
+```
+
+5. **Run the application**
 ```bash
 dotnet run
 ```
 
-Aplikasi akan berjalan di `http://localhost:5000`.
+6. **Access the application**
+Open http://localhost:5000 in your browser.
 
-### 4. Setup RCCService
-RCCService harus berjalan di port yang dikonfigurasi (default: 3000).
-
-## API Endpoints
-
-### Public Endpoints
-- `GET /` - Home page
-- `GET /Home/Games` - Games listing
-- `GET /Account/Login` - Login page
-- `GET /Account/Register` - Register page
-- `GET /Profile/{username}` - User profile
-- `GET /asset/?id=` - Asset delivery
-- `GET /thumbs/avatar?userId=` - Avatar thumbnail
-- `GET /thumbs/game?gameId=` - Game thumbnail
-
-### Game Endpoints (Roblox Client)
-- `GET /Game/Join.ashx?placeId=` - Join game
-- `GET /Game/PlaceLauncher.ashx?placeId=` - Launch place
-- `GET /Game/GetGames` - Get games list
-- `POST /Game/PlayerJoined` - Player joined notification
-
-### Internal API
-- `POST /api/internal/server/create` - Create game server
-- `POST /api/internal/server/stop` - Stop game server
-- `GET /api/internal/server/status/{id}` - Get server status
-- `POST /api/internal/game/join` - Join game
-- `POST /api/internal/script/execute` - Execute Lua script
+### Default Accounts
+After seeding, these accounts are created:
+- **Admin**: `Admin` / `Admin123!`
+- **Player**: `PlayerOne` / `Player123!`
 
 ## Game Join Flow
 
-1. Client menekan tombol Play
-2. Client memanggil `/Game/Join.ashx?placeId=X`
-3. Server memvalidasi session/user
-4. Server membuat authentication ticket
-5. Server mengirim job ke RCCService
-6. RCCService membuat game server
-7. Server mengembalikan: `OK|serverId|address|port|ticket`
-8. Client connect ke server menggunakan info tersebut
+1. Client calls `/Game/Join.ashx?placeId=X`
+2. Server validates session authentication
+3. Server creates authentication ticket
+4. Server creates/finds game server via RCCService
+5. Server returns: `OK|serverId|address|port|ticket`
+6. Client connects to game server
 
-## Lisensi
+## Game Server Management
 
-MIT License
+### RCCService Integration
+The RCCManager service handles:
+- Creating new game servers
+- Stopping running servers
+- Executing Lua scripts
+- Server health monitoring
+
+### PlaceLauncher Format
+Returns pipe-delimited string:
+```
+machineAddress|machinePort|placeId|gameId|serverId|ticket|placeVersionId
+```
+
+## Entity Framework Migrations
+
+### Create Migration
+```bash
+dotnet ef migrations add InitialCreate
+```
+
+### Update Database
+```bash
+dotnet ef database update
+```
+
+### Generate SQL Script
+```bash
+dotnet ef migrations script -o schema.sql
+```
+
+## Development
+
+### Run in Development Mode
+```bash
+dotnet run --environment Development
+```
+
+### Enable Detailed Logging
+Update `appsettings.Development.json`:
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
+
+## Security Features
+
+- BCrypt password hashing
+- Session token expiration
+- Account lockout after failed login attempts
+- Input validation and sanitization
+- SQL injection prevention via EF Core
+- XSS protection via Razor
+
+## License
+
+MIT License - See LICENSE file for details.
+
+---
+
+Built with ASP.NET Core 8, Entity Framework Core, and MySQL. Compatible with Roblox client version 0.338.0.202976.

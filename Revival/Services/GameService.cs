@@ -61,6 +61,19 @@ public class GameService
     }
 
     /// <summary>
+    /// Gets games by creator ID.
+    /// </summary>
+    public async Task<List<Game>> GetGamesByCreatorAsync(int creatorId)
+    {
+        return await _context.Games
+            .Where(g => g.CreatorId == creatorId && g.IsActive)
+            .Include(g => g.Creator)
+            .Include(g => g.Places)
+            .OrderByDescending(g => g.CreatedAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Creates a new game.
     /// </summary>
     public async Task<Game?> CreateGameAsync(int creatorId, string name, string? description)

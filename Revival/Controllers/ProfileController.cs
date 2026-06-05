@@ -13,7 +13,7 @@ public class ProfileController : Controller
     private readonly AuthService _authService;
     private readonly GameService _gameService;
     private readonly ILogger<ProfileController> _logger;
-    private const string SessionCookieName = "RevivalSession";
+    private const string SessionCookieName = "RevivalAuth";
 
     public ProfileController(
         AuthService authService, 
@@ -31,21 +31,29 @@ public class ProfileController : Controller
     [HttpGet("/Profile/{username}")]
     public async Task<IActionResult> ViewProfile(string username)
     {
-        var user = await GetUserByUsernameAsync(username);
+        var user = await _authService.GetUserByUsernameAsync(username);
         if (user == null)
         {
             return NotFound("User not found");
         }
 
+        var games = await _gameService.GetGamesByCreatorAsync(user.Id);
+        
         var viewModel = new ProfileViewModel
         {
             Id = user.Id,
             Username = user.Username,
             DisplayName = user.DisplayName ?? user.Username,
             Description = user.Description,
+            Location = user.Location,
+            Website = user.Website,
             AvatarAssetId = user.AvatarAssetId,
             CreatedAt = user.CreatedAt,
-            TotalGames = user.CreatedGames?.Count ?? 0
+            TotalGames = games.Count,
+            TotalPlays = games.Sum(g => g.TotalPlays),
+            Reputation = user.Reputation,
+            FollowerCount = user.FollowerCount,
+            FollowingCount = user.FollowingCount
         };
 
         return View(viewModel);
@@ -64,15 +72,23 @@ public class ProfileController : Controller
             return RedirectToAction("Login", "Account");
         }
 
+        var games = await _gameService.GetGamesByCreatorAsync(user.Id);
+        
         var viewModel = new ProfileViewModel
         {
             Id = user.Id,
             Username = user.Username,
             DisplayName = user.DisplayName ?? user.Username,
             Description = user.Description,
+            Location = user.Location,
+            Website = user.Website,
             AvatarAssetId = user.AvatarAssetId,
             CreatedAt = user.CreatedAt,
-            TotalGames = user.CreatedGames?.Count ?? 0,
+            TotalGames = games.Count,
+            TotalPlays = games.Sum(g => g.TotalPlays),
+            Reputation = user.Reputation,
+            FollowerCount = user.FollowerCount,
+            FollowingCount = user.FollowingCount,
             IsOwnProfile = true
         };
 
@@ -96,6 +112,8 @@ public class ProfileController : Controller
         {
             DisplayName = user.DisplayName,
             Description = user.Description,
+            Location = user.Location,
+            Website = user.Website,
             AvatarAssetId = user.AvatarAssetId
         });
     }
@@ -123,6 +141,8 @@ public class ProfileController : Controller
             user.Id,
             model.DisplayName,
             model.Description,
+            model.Location,
+            model.Website,
             model.AvatarAssetId);
 
         if (success)
@@ -148,32 +168,14 @@ public class ProfileController : Controller
             return RedirectToAction("Login", "Account");
         }
 
-        var games = await _gameService.GetPublicGamesAsync();
-        var userGames = games.Where(g => g.CreatorId == user.Id).ToList();
-
-        return View(userGames);
-    }
-
-    /// <summary>
-    /// Gets user by username.
-    /// </summary>
-    private async Task<User?> GetUserByUsernameAsync(string username)
-    {
-        return await _authService.GetUserByIdAsync(
-            (await GetAllUsersAsync()).FirstOrDefault(u => u.Username == username)?.Id ?? 0);
-    }
-
-    private async Task<List<User>> GetAllUsersAsync()
-    {
-        // This would normally be a database query
-        // For now, we'll get from auth service context
-        return new List<User>();
+        var games = await _gameService.GetGamesByCreatorAsync(user.Id);
+        return View(games);
     }
 
     /// <summary>
     /// Gets the current authenticated user from session.
     /// </summary>
-    private async Task<(bool IsAuthenticated, Session? Session, User? User)> GetCurrentUserAsync()
+    private async Task<(bool IsAuthenticated, UserSession? Session, User? User)> GetCurrentUserAsync()
     {
         var sessionToken = Request.Cookies[SessionCookieName];
         
@@ -195,9 +197,15 @@ public class ProfileViewModel
     public string Username { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Location { get; set; }
+    public string? Website { get; set; }
     public int? AvatarAssetId { get; set; }
     public DateTime CreatedAt { get; set; }
     public int TotalGames { get; set; }
+    public long TotalPlays { get; set; }
+    public int Reputation { get; set; }
+    public int FollowerCount { get; set; }
+    public int FollowingCount { get; set; }
     public bool IsOwnProfile { get; set; }
 }
 
@@ -206,11 +214,17 @@ public class ProfileViewModel
 /// </summary>
 public class EditProfileViewModel
 {
-    [StringLength(255)]
+    [StringLength(100)]
     public string? DisplayName { get; set; }
 
-    [StringLength(500)]
+    [StringLength(1000)]
     public string? Description { get; set; }
+
+    [StringLength(100)]
+    public string? Location { get; set; }
+
+    [StringLength(100)]
+    public string? Website { get; set; }
 
     public int? AvatarAssetId { get; set; }
 }
