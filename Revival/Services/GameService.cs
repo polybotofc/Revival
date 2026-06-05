@@ -82,7 +82,7 @@ public class GameService
         {
             Name = name,
             Description = description,
-            CreatorId = creatorId,
+            CreatorId = place.CreatorId ?? 1,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -182,10 +182,11 @@ public class GameService
         if (place == null) return null;
 
         // Call RCCService to create server
-        var (success, serverId, jobId, error) = await _rccManager.CreateGameServerAsync(
+        var (success, serverId, jobId, address, port, error) = await _rccManager.CreateGameServerAsync(
             placeId, 
             place.FilePath, 
-            place.MaxPlayers);
+            place.MaxPlayers,
+            place.CreatorId ?? 1);
 
         if (!success || serverId == null)
         {
@@ -201,11 +202,11 @@ public class GameService
             ServerId = serverId,
             PlaceId = placeId,
             GameId = place.GameId,
-            CreatorId = creatorId,
+            CreatorId = place.CreatorId ?? 1,
             Host = connInfo?.Address ?? "localhost",
-            Port = connInfo?.Port ?? 53640,
+            Port = connInfo?.Port ?? port,
             RCCJobId = jobId,
-            RCCServerUrl = connInfo?.Address,
+            RCCServerUrl = connInfo?.Address ?? address,
             Status = "Running",
             MaxPlayers = place.MaxPlayers,
             ExpiresAt = DateTime.UtcNow.AddHours(2)
@@ -248,7 +249,7 @@ public class GameService
         var server = await _context.GameServers.FirstOrDefaultAsync(s => s.ServerId == serverId);
         if (server == null) return false;
 
-        var (success, error) = await _rccManager.StopGameServerAsync(server.RCCJobId ?? serverId);
+        var (success, error) = await _rccManager.StopGameServerAsync(serverId, server.RCCJobId);
         
         if (success)
         {
