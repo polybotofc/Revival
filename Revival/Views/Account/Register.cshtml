@@ -1,0 +1,146 @@
+@*
+    Registration page view
+    Allows new users to create an account
+*@
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_Layout";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Create Account</h1>
+        
+        <form method="post" action="/Account/Register">
+            @if (!string.IsNullOrEmpty(returnUrl))
+            {
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+            }
+            
+            <div class="form-group">
+                <label for="Username">Username</label>
+                <input type="text" id="Username" name="Username" required minlength="3" maxlength="50" class="form-control" 
+                       pattern="[a-zA-Z0-9_]+" title="Letters, numbers, and underscores only" />
+                <small>3-50 characters, letters, numbers, and underscores only</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="Email">Email</label>
+                <input type="email" id="Email" name="Email" required class="form-control" />
+            </div>
+            
+            <div class="form-group">
+                <label for="Password">Password</label>
+                <input type="password" id="Password" name="Password" required minlength="6" maxlength="100" class="form-control" />
+                <small>At least 6 characters</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="ConfirmPassword">Confirm Password</label>
+                <input type="password" id="ConfirmPassword" name="ConfirmPassword" required class="form-control" />
+            </div>
+            
+            @if (ViewData.ModelState.ErrorCount > 0)
+            {
+                <div class="alert alert-error">
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <p>@error.ErrorMessage</p>
+                    }
+                </div>
+            }
+            
+            <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="/Account/Login">Login here</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh;
+        padding: 2rem;
+    }
+    
+    .auth-card {
+        background: #1a1a2e;
+        padding: 2rem;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .auth-card h1 {
+        text-align: center;
+        color: #fff;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        color: #aaa;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group small {
+        display: block;
+        color: #666;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #16213e;
+        color: #fff;
+        font-size: 1rem;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #e94560;
+    }
+    
+    .btn-block {
+        width: 100%;
+        padding: 0.75rem;
+        margin-top: 1rem;
+    }
+    
+    .auth-footer {
+        text-align: center;
+        margin-top: 1rem;
+        color: #aaa;
+    }
+    
+    .auth-footer a {
+        color: #e94560;
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-error {
+        background: rgba(233, 69, 96, 0.2);
+        border: 1px solid #e94560;
+        color: #e94560;
+    }
+</style>

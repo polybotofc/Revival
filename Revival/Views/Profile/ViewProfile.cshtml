@@ -1,0 +1,139 @@
+@*
+    User profile page view
+    Displays user information and their games
+*@
+@model Revival.Controllers.ProfileViewModel
+@{
+    ViewData["Title"] = Model?.Username ?? "Profile";
+    Layout = "_Layout";
+}
+
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            @if (Model?.AvatarAssetId != null)
+            {
+                <img src="/thumbs/avatar?userId=@Model.Id" alt="@Model.Username" />
+            }
+            else
+            {
+                <img src="/images/default-avatar.png" alt="@Model.Username" />
+            }
+        </div>
+        <div class="profile-info">
+            <h1>@Model?.DisplayName</h1>
+            <p class="username">@@@Model?.Username</p>
+            <p class="description">@Model?.Description</p>
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-value">@Model?.TotalGames</span>
+                    <span class="stat-label">Games</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">@Model?.CreatedAt.ToString("MMM yyyy")</span>
+                    <span class="stat-label">Joined</span>
+                </div>
+            </div>
+        </div>
+        @if (Model?.IsOwnProfile == true)
+        {
+            <div class="profile-actions">
+                <a href="/Profile/Edit" class="btn btn-secondary">Edit Profile</a>
+            </div>
+        }
+    </div>
+
+    <div class="profile-content">
+        <h2>Games by @Model?.Username</h2>
+        @if (Model?.TotalGames > 0)
+        {
+            <div class="games-grid">
+                @* Games will be loaded here *@
+            </div>
+        }
+        else
+        {
+            <p class="no-games">This user hasn't created any games yet.</p>
+        }
+    </div>
+</div>
+
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .profile-header {
+        display: flex;
+        gap: 2rem;
+        background: #1a1a2e;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-avatar img {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .profile-info {
+        flex: 1;
+    }
+    
+    .profile-info h1 {
+        color: #fff;
+        margin: 0;
+    }
+    
+    .profile-info .username {
+        color: #666;
+        margin: 0.25rem 0 1rem;
+    }
+    
+    .profile-info .description {
+        color: #aaa;
+        margin-bottom: 1rem;
+    }
+    
+    .profile-stats {
+        display: flex;
+        gap: 2rem;
+    }
+    
+    .stat {
+        text-align: center;
+    }
+    
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #e94560;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .profile-actions {
+        display: flex;
+        align-items: flex-start;
+    }
+    
+    .profile-content h2 {
+        color: #fff;
+        margin-bottom: 1rem;
+    }
+    
+    .no-games {
+        color: #666;
+        text-align: center;
+        padding: 2rem;
+    }
+</style>

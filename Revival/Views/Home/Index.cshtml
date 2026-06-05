@@ -1,0 +1,74 @@
+@*
+    Home page view displaying game listings
+    Shows featured and all public games
+*@
+@model IEnumerable<Revival.Models.Game>
+@{
+    ViewData["Title"] = "Home";
+    Layout = "_Layout";
+}
+
+<div class="hero">
+    <div class="container">
+        <h1>Welcome to Roblox Revival</h1>
+        <p>Play games, create experiences, and connect with players worldwide.</p>
+        @if (Context.Request.Cookies["RevivalSession"] == null)
+        {
+            <a href="/Account/Register" class="btn btn-large btn-primary">Get Started</a>
+        }
+    </div>
+</div>
+
+<div class="container">
+    <section class="games-section">
+        <h2>Popular Games</h2>
+        <div class="games-grid">
+            @if (Model.Any())
+            {
+                foreach (var game in Model)
+                {
+                    <div class="game-card">
+                        <div class="game-thumbnail">
+                            <img src="/thumbs/game?gameId=@game.Id" alt="@game.Name" onerror="this.src='/images/default-game.png'" />
+                        </div>
+                        <div class="game-info">
+                            <h3>@game.Name</h3>
+                            <p class="game-creator">by @game.Creator?.Username</p>
+                            <p class="game-description">@game.Description</p>
+                            <div class="game-stats">
+                                <span class="stat">
+                                    <i class="icon-players"></i>
+                                    @game.ActivePlayers playing
+                                </span>
+                                <span class="stat">
+                                    <i class="icon-plays"></i>
+                                    @game.TotalPlays.ToString("N0") plays
+                                </span>
+                            </div>
+                            <button class="btn btn-play" onclick="playGame(@(game.Places?.FirstOrDefault()?.Id ?? 0))">Play</button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="no-games">
+                    <p>No games available yet. Be the first to create one!</p>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        function playGame(placeId) {
+            if (!placeId) {
+                alert('This game has no playable places.');
+                return;
+            }
+            // Redirect to the game launcher
+            window.location.href = '/Game/PlaceLauncher.ashx?placeId=' + placeId;
+        }
+    </script>
+}

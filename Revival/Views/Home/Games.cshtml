@@ -1,0 +1,189 @@
+@*
+    Games listing page
+    Shows all available public games
+*@
+@model IEnumerable<Revival.Models.Game>
+@{
+    ViewData["Title"] = "Games";
+    Layout = "_Layout";
+}
+
+<div class="games-page">
+    <div class="container">
+        <h1>All Games</h1>
+        
+        <div class="games-grid">
+            @if (Model.Any())
+            {
+                foreach (var game in Model)
+                {
+                    <div class="game-card">
+                        <div class="game-thumbnail">
+                            <img src="/thumbs/game?gameId=@game.Id" alt="@game.Name" onerror="this.src='/images/default-game.png'" />
+                            <button class="play-button" onclick="playGame(@(game.Places?.FirstOrDefault()?.Id ?? 0))">
+                                <span>Play</span>
+                            </button>
+                        </div>
+                        <div class="game-details">
+                            <h3>@game.Name</h3>
+                            <p class="creator">by @game.Creator?.Username</p>
+                            <p class="description">@game.Description</p>
+                            <div class="game-meta">
+                                <span class="players">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                    </svg>
+                                    @game.ActivePlayers
+                                </span>
+                                <span class="plays">@game.TotalPlays.ToString("N0") plays</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="no-games-message">
+                    <h3>No games available</h3>
+                    <p>Be the first to create and share a game!</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function playGame(placeId) {
+            if (!placeId) {
+                alert('This game has no playable places.');
+                return;
+            }
+            
+            // Check if user is logged in
+            fetch('/Account/CheckAuth')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        window.location.href = '/Game/PlaceLauncher.ashx?placeId=' + placeId;
+                    } else {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent('/Game/PlaceLauncher.ashx?placeId=' + placeId);
+                    }
+                });
+        }
+    </script>
+}
+
+<style>
+    .games-page {
+        padding: 2rem 0;
+    }
+    
+    .games-page h1 {
+        color: #fff;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 2rem;
+    }
+    
+    .game-card {
+        background: #1a1a2e;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .game-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(233, 69, 96, 0.2);
+    }
+    
+    .game-thumbnail {
+        position: relative;
+        aspect-ratio: 16/9;
+        background: #0f0f23;
+    }
+    
+    .game-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .play-button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #e94560;
+        color: #fff;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 25px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .game-thumbnail:hover .play-button {
+        opacity: 1;
+    }
+    
+    .game-details {
+        padding: 1rem;
+    }
+    
+    .game-details h3 {
+        color: #fff;
+        margin: 0 0 0.25rem;
+        font-size: 1.1rem;
+    }
+    
+    .creator {
+        color: #666;
+        font-size: 0.9rem;
+        margin: 0 0 0.5rem;
+    }
+    
+    .description {
+        color: #aaa;
+        font-size: 0.85rem;
+        margin: 0 0 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .game-meta {
+        display: flex;
+        justify-content: space-between;
+        color: #666;
+        font-size: 0.85rem;
+    }
+    
+    .players {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .no-games-message {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem;
+        color: #666;
+    }
+    
+    .no-games-message h3 {
+        color: #aaa;
+        margin-bottom: 0.5rem;
+    }
+</style>
