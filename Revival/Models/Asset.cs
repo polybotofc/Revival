@@ -94,7 +94,7 @@ public enum AssetType
 {
     None = 0,
     Image = 1,
-    T-Shirt = 2,
+    TShirt = 2,  // T-Shirt in Roblox
     Audio = 3,
     Mesh = 4,
     Lua = 5,

@@ -54,15 +54,6 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Include views and static files -->
-    <Content Include="Views\**\*.cshtml" />
-    <Content Include="wwwroot\**" />
-  </ItemGroup>
-
-  <!-- Entity Framework Migrations -->
-  <Target Name="BuildMigrations" AfterTargets="Build">
-    <Exec Command="dotnet ef migrations build --no-build" Condition="Exists('Migrations')" />
-  </Target>
+  <!-- Remove duplicate Content items - SDK includes them by default -->
 
 </Project>

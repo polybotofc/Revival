@@ -108,7 +108,7 @@ public class ProfileController : Controller
             return RedirectToAction("Login", "Account");
         }
 
-        return View(new EditProfileViewModel
+        return View(new ProfileEditViewModel
         {
             DisplayName = user.DisplayName,
             Description = user.Description,
@@ -123,7 +123,7 @@ public class ProfileController : Controller
     /// </summary>
     [HttpPost("/Profile/Edit")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(EditProfileViewModel model)
+    public async Task<IActionResult> Edit(ProfileEditViewModel model)
     {
         var (isAuthenticated, session, user) = await GetCurrentUserAsync();
         
@@ -212,7 +212,7 @@ public class ProfileViewModel
 /// <summary>
 /// View model for editing user profiles.
 /// </summary>
-public class EditProfileViewModel
+public class ProfileEditViewModel
 {
     [StringLength(100)]
     public string? DisplayName { get; set; }
