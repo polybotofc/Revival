@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Backend API server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=your-secret-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+      - RCC_URL=http://rcc:64989
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/node_modules
+    depends_on:
+      - rcc
+    command: npm run dev
+
+  # Frontend web application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+    volumes:
+      - ./frontend:/app
+      - frontend_data:/app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev
+
+  # Roblox Cloud Console (RCC) Service
+  # Note: This is a placeholder. In production, you would use
+  # the actual RCC service from Roblox.
+  rcc:
+    image: busybox:latest
+    ports:
+      - "64989:64989"
+    command: tail -f /dev/null
+
+volumes:
+  backend_data:
+  frontend_data:
