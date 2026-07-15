@@ -104,10 +104,10 @@ export class RenderService {
         cwd: rccDir
       });
 
-      // Build command - use spawn directly with proper arguments
+      // Build command - use spawn directly without shell
       const exePath = config.rcc.executablePath;
       
-      // Use spawn with shell: true to handle Windows paths properly
+      // Use spawn without shell - Node.js handles Windows paths natively
       const rccProcess = spawn(exePath, [
         '-console',
         '-verbose',
@@ -117,7 +117,7 @@ export class RenderService {
         'DevSettingsFile.json',
       ], {
         cwd: rccDir,
-        shell: true,
+        windowsHide: false,
       });
 
       let stdout = '';
