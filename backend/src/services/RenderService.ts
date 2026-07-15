@@ -107,8 +107,8 @@ export class RenderService {
       const { spawn } = require('child_process');
       const exePath = config.rcc.executablePath;
       
-      // Command as a string - shell will handle quoting
-      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
+      // Command without quotes - path has no spaces now
+      const command = `${exePath} -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
 
       const child = spawn(command, [], {
         cwd: rccDir,
