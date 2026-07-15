@@ -103,16 +103,16 @@ export class RenderService {
         cwd: rccDir
       });
 
-      // Use spawn with shell:true to properly wait for process
+      // Use spawn with shell: true - let shell handle the command string
       const { spawn } = require('child_process');
       const exePath = config.rcc.executablePath;
       
-      // Build command - use shell to handle paths
+      // Command as a string - shell will handle quoting
       const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
 
-      const child = spawn('cmd.exe', ['/c', command], {
+      const child = spawn(command, [], {
         cwd: rccDir,
-        shell: false,
+        shell: true,
       });
 
       let stdout = '';
