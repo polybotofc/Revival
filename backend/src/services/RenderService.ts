@@ -110,9 +110,12 @@ export class RenderService {
       // Command without quotes - path has no spaces now
       const command = `${exePath} -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
 
+      logger.info('Executing command', { command });
+
       const child = spawn(command, [], {
         cwd: rccDir,
         shell: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
 
       let stdout = '';
