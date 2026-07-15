@@ -92,7 +92,8 @@ export class RenderService {
       Arguments: {},
     }];
 
-    const jobFilePath = path.join(this.thumbnailDir, `job_${jobId}.json`);
+    // Use absolute path for job file
+    const jobFilePath = path.resolve(this.thumbnailDir, `job_${jobId}.json`);
     fs.writeFileSync(jobFilePath, JSON.stringify(jobConfig, null, 2));
     
     logger.debug('Created RCC job file', { jobId, jobFilePath });
@@ -111,12 +112,15 @@ export class RenderService {
         return;
       }
 
-      // Spawn RCC process
+      // Use absolute path for job file in arguments
+      const absoluteJobPath = path.resolve(jobFilePath);
+      
+      // Spawn RCC process - use backend directory as cwd since job file is there
       const rccArgs = [
         '-console',
         '-verbose',
         '-localtest',
-        jobFilePath,
+        absoluteJobPath,
         '-settingsfile',
         'DevSettingsFile.json',
       ];
@@ -127,7 +131,7 @@ export class RenderService {
       });
 
       const rccProcess = spawn(config.rcc.executablePath, rccArgs, {
-        cwd: path.dirname(config.rcc.executablePath),
+        cwd: process.cwd(), // Use backend directory since job file is there
         timeout: 60000,
       });
 
@@ -143,12 +147,10 @@ export class RenderService {
         
         // Check for success in output
         if (stdout.includes('ThumbnailGenerator::click() success')) {
-          // RCC reports success - look for output file
+          // RCC reports success - look for output file in thumbnails dir
           const possibleOutputs = [
-            path.join(this.thumbnailDir, `thumb_${jobId}.png`),
-            path.join(path.dirname(config.rcc.executablePath), `thumb_${jobId}.png`),
-            path.join(this.thumbnailDir, 'output.png'),
-            path.join(path.dirname(config.rcc.executablePath), 'output.png'),
+            path.resolve(this.thumbnailDir, `thumb_${jobId}.png`),
+            path.resolve(this.thumbnailDir, 'output.png'),
           ];
 
           for (const outPath of possibleOutputs) {
