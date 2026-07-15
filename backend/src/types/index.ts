@@ -123,9 +123,10 @@ export interface ApiResponse<T = unknown> {
 
 // Render types
 export interface RenderResult {
-  imageData: string; // Base64 encoded PNG
+  imageData: string; // Base64 encoded PNG/SVG
   success: boolean;
   error?: string;
+  isPlaceholder?: boolean;
 }
 
 // Asset type mapping

@@ -1,15 +1,8 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
-
-// Validate required environment variables
-const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(`Missing required environment variable: ${envVar}`);
-  }
-}
 
 export const config = {
   // Server
@@ -18,20 +11,23 @@ export const config = {
 
   // JWT
   jwt: {
-    secret: process.env['JWT_SECRET'] as string,
+    secret: process.env['JWT_SECRET'] ?? 'fallback-secret-change-in-production',
     expiresIn: process.env['JWT_EXPIRES_IN'] ?? '7d',
   },
 
   // Database
   database: {
-    url: process.env['DATABASE_URL'] as string,
+    url: process.env['DATABASE_URL'] ?? 'file:./prisma/dev.db',
   },
 
   // RCC (Roblox Cloud Console)
   rcc: {
-    host: process.env['RCC_HOST'] ?? 'localhost',
+    host: process.env['RCC_HOST'] ?? '127.0.0.1',
     port: parseInt(process.env['RCC_PORT'] ?? '64989', 10),
-    url: process.env['RCC_URL'] ?? 'http://localhost:64989',
+    url: process.env['RCC_URL'] ?? 'http://127.0.0.1:64989',
+    executablePath: process.env['RCC_EXECUTABLE_PATH'] ?? 'C:\\New folder\\RCCService.exe',
+    contentPath: process.env['RCC_CONTENT_PATH'] ?? 'C:\\New folder\\Content',
+    scriptsPath: process.env['RCC_SCRIPTS_PATH'] ?? 'C:\\New folder\\internalscripts',
   },
 
   // Default Body Colors (Roblox Classic - Pearl)
@@ -48,6 +44,7 @@ export const config = {
   thumbnail: {
     size: parseInt(process.env['THUMBNAIL_SIZE'] ?? '420', 10),
     cameraType: process.env['THUMBNAIL_CAMERA_TYPE'] ?? 'Portrait',
+    outputDir: process.env['THUMBNAIL_OUTPUT_DIR'] ?? path.join(process.cwd(), 'thumbnails'),
   },
 } as const;
 
