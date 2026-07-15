@@ -104,13 +104,20 @@ export class RenderService {
         cwd: rccDir
       });
 
-      // Build command with proper quoting for Windows
+      // Build command - use spawn directly with proper arguments
       const exePath = config.rcc.executablePath;
-      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
-
-      const rccProcess = spawn('cmd.exe', ['/c', command], {
+      
+      // Use spawn with shell: true to handle Windows paths properly
+      const rccProcess = spawn(exePath, [
+        '-console',
+        '-verbose',
+        '-localtest',
+        jobFilePath,
+        '-settingsfile',
+        'DevSettingsFile.json',
+      ], {
         cwd: rccDir,
-        shell: false,
+        shell: true,
       });
 
       let stdout = '';
