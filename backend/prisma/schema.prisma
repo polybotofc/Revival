@@ -1,0 +1,64 @@
+// Prisma Schema for Roblox Avatar Revival System
+// Database: SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User account model
+// Stores basic user information and avatar type preference
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique
+  email       String   @unique
+  passwordHash String
+  avatarType  String   @default("R6") // R6 or R15
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  avatarAssets   AvatarAsset[]
+  bodyColors     AvatarBodyColors?
+
+  @@map("users")
+}
+
+// Avatar assets that user has equipped
+// Tracks which assets are currently worn by the avatar
+model AvatarAsset {
+  id          Int    @id @default(autoincrement())
+  userId      Int
+  assetId     Int
+  assetTypeId Int    // 1=Hair, 2=Head, 3=Face, 4=Neck, 5=Shoulder, 6=Front, 7=Back, 8=Tool, etc.
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetId]) // Prevent duplicate assets
+  @@index([userId])
+  @@map("avatar_assets")
+}
+
+// Body color configuration for avatar
+// Stores brick color IDs for each body part
+model AvatarBodyColors {
+  id              Int @id @default(autoincrement())
+  userId          Int @unique
+  headColorId     Int @default(194)
+  torsoColorId    Int @default(194)
+  leftArmColorId  Int @default(194)
+  rightArmColorId Int @default(194)
+  leftLegColorId  Int @default(194)
+  rightLegColorId Int @default(194)
+
+  // Relations
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("avatar_body_colors")
+}

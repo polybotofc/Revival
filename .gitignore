@@ -1,0 +1,23 @@
+# Dependencies (for each service)
+# backend/node_modules/
+# frontend/node_modules/
+
+# Build outputs
+# backend/dist/
+# frontend/.next/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.temp
