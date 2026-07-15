@@ -2,7 +2,7 @@ import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { avatarService } from './AvatarService.js';
 import type { AvatarResponse, RenderResult } from '../types/index.js';
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -104,21 +104,15 @@ export class RenderService {
         cwd: rccDir
       });
 
-      // Use execFile which is better for Windows
+      // Use exec with proper quoting for Windows
       const exePath = config.rcc.executablePath;
-      const args = [
-        '-console',
-        '-verbose',
-        '-localtest',
-        jobFilePath,
-        '-settingsfile',
-        'DevSettingsFile.json',
-      ];
+      // Build command with proper quoting
+      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
 
-      execFile(exePath, args, {
+      exec(command, {
         cwd: rccDir,
         timeout: 60000,
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large output
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
       }, (error, stdout, stderr) => {
         // Clean up job file
         try {
