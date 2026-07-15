@@ -2,30 +2,46 @@ import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { avatarService } from './AvatarService.js';
 import type { AvatarResponse, RenderResult } from '../types/index.js';
-import http from 'http';
+import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * RenderService handles avatar rendering using Roblox Cloud Console (RCC)
- * Uses SOAP/HTTP API to communicate with RCC Service
+ * Spawns RCC process and captures Base64 PNG from console output
  */
 export class RenderService {
+  private readonly thumbnailDir: string;
+
+  constructor() {
+    this.thumbnailDir = config.thumbnail.outputDir;
+    if (!fs.existsSync(this.thumbnailDir)) {
+      fs.mkdirSync(this.thumbnailDir, { recursive: true });
+    }
+  }
+
   /**
    * Generate avatar thumbnail
    * 
    * Flow:
    * 1. Get avatar JSON from AvatarService
-   * 2. Send SOAP request to RCC Service API
-   * 3. Parse response for Base64 PNG
-   * 4. Return PNG image
+   * 2. Create job file for RCC
+   * 3. Spawn RCC process
+   * 4. Capture Base64 PNG from stdout
+   * 5. Return PNG image
    */
   async GenerateThumbnail(userId: number): Promise<RenderResult> {
     try {
-      // Step 1: Get avatar data
-      const avatarData = await avatarService.getAvatar(userId);
+      // Validate user exists
+      await avatarService.getAvatar(userId);
       logger.debug('Got avatar data for rendering', { userId });
 
-      // Step 2: Send request to RCC Service
-      const result = await this.requestThumbnailFromRCC(avatarData, userId);
+      const jobFilePath = await this.createJobFile(userId);
+      const result = await this.spawnRCCAndCapture(userId, jobFilePath);
+
+      try {
+        fs.unlinkSync(jobFilePath);
+      } catch { /* ignore cleanup errors */ }
 
       if (result) {
         logger.info('Thumbnail generated via RCC', { userId });
@@ -35,143 +51,130 @@ export class RenderService {
         };
       }
 
-      // RCC didn't produce output, use placeholder
       logger.warn('RCC did not produce output, using placeholder', { userId });
       return this.generatePlaceholderThumbnail(userId);
 
     } catch (error) {
       logger.error('Failed to generate thumbnail via RCC', { userId, error });
-      // Fallback to placeholder
       return this.generatePlaceholderThumbnail(userId);
     }
   }
 
   /**
-   * Request thumbnail from RCC Service via HTTP SOAP
+   * Create RCC job file
    */
-  private requestThumbnailFromRCC(_avatarData: AvatarResponse, userId: number): Promise<string | null> {
+  private async createJobFile(userId: number): Promise<string> {
+    const jobConfig = [{
+      Mode: 'Thumbnail',
+      Settings: {
+        Type: 'Avatar',
+        Arguments: [
+          `http://127.0.0.1:${config.port}`,
+          `http://127.0.0.1:${config.port}/api/avatar/${userId}`,
+          'PNG',
+          config.thumbnail.size,
+          config.thumbnail.size,
+        ],
+      },
+      Arguments: {},
+    }];
+
+    const jobId = `avatar_${userId}_${Date.now()}`;
+    const jobFilePath = path.resolve(this.thumbnailDir, `job_${jobId}.json`);
+    fs.writeFileSync(jobFilePath, JSON.stringify(jobConfig, null, 2));
+    
+    logger.debug('Created RCC job file', { jobId, jobFilePath });
+    return jobFilePath;
+  }
+
+  /**
+   * Spawn RCC process and capture Base64 PNG from stdout
+   */
+  private spawnRCCAndCapture(_userId: number, jobFilePath: string): Promise<string | null> {
     return new Promise((resolve) => {
-      const rccHost = config.rcc.host;
-      const rccPort = config.rcc.port;
-      const baseUrl = `http://${rccHost}:${config.port}`;
-      const avatarUrl = `${baseUrl}/api/avatar/${userId}`;
+      if (!fs.existsSync(config.rcc.executablePath)) {
+        logger.warn('RCC executable not found', { path: config.rcc.executablePath });
+        resolve(null);
+        return;
+      }
 
-      // Create SOAP request for thumbnail
-      const soapEnvelope = this.createThumbnailSoapRequest(baseUrl, avatarUrl, userId);
-
-      logger.info('Sending thumbnail request to RCC Service', { 
-        host: rccHost, 
-        port: rccPort 
+      logger.info('Spawning RCC process', { 
+        executable: config.rcc.executablePath,
+        jobFile: jobFilePath
       });
 
-      const options = {
-        hostname: rccHost,
-        port: rccPort,
-        path: '/RCCService.asmx',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': 'http://roblox.com/RCCService/ExecuteJob',
-          'Content-Length': Buffer.byteLength(soapEnvelope),
-        },
-        timeout: 60000,
-      };
+      const rccProcess = spawn(config.rcc.executablePath, [
+        '-console',
+        '-verbose',
+        '-localtest',
+        jobFilePath,
+        '-settingsfile',
+        'DevSettingsFile.json',
+      ], {
+        cwd: path.dirname(config.rcc.executablePath),
+      });
 
-      const req = http.request(options, (res) => {
-        const chunks: Buffer[] = [];
+      let stdout = '';
+      let stderr = '';
+
+      rccProcess.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString();
+        stdout += text;
         
-        res.on('data', (chunk: Buffer) => {
-          chunks.push(chunk);
-        });
+        if (stdout.includes('ThumbnailGenerator::click() success')) {
+          logger.info('RCC reported success');
+        }
+      });
 
-        res.on('end', () => {
-          const response = Buffer.concat(chunks).toString('utf8');
-          logger.debug('RCC response received', { 
-            statusCode: res.statusCode,
-            responseLength: response.length 
-          });
+      rccProcess.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
 
-          // Parse SOAP response to extract Base64 image
-          const base64Image = this.parseSoapResponse(response);
-          
-          if (base64Image) {
-            resolve(base64Image);
-          } else {
-            // Try alternative response formats
-            const altResult = this.parseAlternativeResponse(response);
-            resolve(altResult);
+      rccProcess.on('error', (error: Error) => {
+        logger.error('RCC process error', { error: error.message });
+        resolve(null);
+      });
+
+      rccProcess.on('close', (code: number | null) => {
+        logger.debug('RCC process exited', { code });
+        
+        const base64Image = this.parseBase64FromOutput(stdout);
+        
+        if (base64Image) {
+          logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
+          resolve(base64Image);
+        } else {
+          if (stderr) {
+            logger.warn('RCC stderr', { stderr: stderr.substring(0, 500) });
           }
-        });
+          resolve(null);
+        }
       });
 
-      req.on('error', (error) => {
-        logger.error('RCC request failed', { error: error.message });
+      setTimeout(() => {
+        rccProcess.kill();
         resolve(null);
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-        logger.error('RCC request timed out');
-        resolve(null);
-      });
-
-      req.write(soapEnvelope);
-      req.end();
+      }, 60000);
     });
   }
 
   /**
-   * Create SOAP envelope for thumbnail request
+   * Parse Base64 PNG from RCC stdout
    */
-  private createThumbnailSoapRequest(baseUrl: string, avatarUrl: string, userId: number): string {
-    const jobId = `thumb_${userId}_${Date.now()}`;
-
-    return `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-               xmlns:rbx="http://roblox.com/RCCService">
-  <soap:Body>
-    <rbx:ExecuteJob>
-      <rbx:job>
-        <rbx:id>${jobId}</rbx:id>
-        <rbx:type>Thumbnail</rbx:type>
-        <rbx:expireTime>2025-12-31T23:59:59Z</rbx:expireTime>
-        <rbx:input>
-          <rbx:thumbnailType>Avatar</rbx:thumbnailType>
-          <rbx:targetId>0</rbx:targetId>
-          <rbx:thumbnailSize>
-            <rbx:width>${config.thumbnail.size}</rbx:width>
-            <rbx:height>${config.thumbnail.size}</rbx:height>
-          </rbx:thumbnailSize>
-          <rbx:format>PNG</rbx:format>
-          <rbx:avatarUrl>${avatarUrl}</rbx:avatarUrl>
-        </rbx:input>
-        <rbx:endpoint>${baseUrl}</rbx:endpoint>
-      </rbx:job>
-    </rbx:ExecuteJob>
-  </soap:Body>
-</soap:Envelope>`;
-  }
-
-  /**
-   * Parse SOAP response to extract Base64 image
-   */
-  private parseSoapResponse(response: string): string | null {
+  private parseBase64FromOutput(output: string): string | null {
     const patterns = [
-      /<Result>([A-Za-z0-9+/=]+)<\/Result>/i,
-      /<data>([A-Za-z0-9+/=]+)<\/data>/i,
-      /<thumbnail>([A-Za-z0-9+/=]+)<\/thumbnail>/i,
-      /<image>([A-Za-z0-9+/=]+)<\/image>/i,
-      /<png>([A-Za-z0-9+/=]+)<\/png>/i,
-      /<Base64Image>([^<]+)<\/Base64Image>/i,
-      /<Output>([^<]+)<\/Output>/i,
+      /return\s+"([A-Za-z0-9+/=]{500,})"/,
+      /THUMBNAIL:([A-Za-z0-9+/=]{500,})/,
+      /([A-Za-z0-9+/=]{5000,})/,
     ];
 
     for (const pattern of patterns) {
-      const match = response.match(pattern);
+      const match = output.match(pattern);
       if (match && match[1]) {
-        return match[1];
+        const potentialBase64 = match[1];
+        if (this.isValidBase64Png(potentialBase64)) {
+          return potentialBase64;
+        }
       }
     }
 
@@ -179,25 +182,29 @@ export class RenderService {
   }
 
   /**
-   * Try alternative response parsing
+   * Validate if Base64 string is likely a PNG image
    */
-  private parseAlternativeResponse(response: string): string | null {
-    const trimmed = response.trim();
-    
-    if (/^[A-Za-z0-9+/=]{100,}$/.test(trimmed)) {
-      return trimmed;
-    }
-
+  private isValidBase64Png(base64: string): boolean {
     try {
-      const json = JSON.parse(trimmed);
-      if (json.imageData || json.thumbnail || json.data || json.result) {
-        return json.imageData || json.thumbnail || json.data || json.result;
+      const decoded = Buffer.from(base64, 'base64');
+      if (decoded.length > 4) {
+        const isPng = decoded[0] === 0x89 && 
+                      decoded[1] === 0x50 && 
+                      decoded[2] === 0x4E && 
+                      decoded[3] === 0x47;
+        if (isPng) {
+          return true;
+        }
       }
+      
+      if (base64.length < 1000) {
+        return false;
+      }
+      
+      return true;
     } catch {
-      // Not JSON
+      return false;
     }
-
-    return null;
   }
 
   /**
@@ -225,7 +232,7 @@ export class RenderService {
   }
 
   /**
-   * Generate improved SVG placeholder for avatar
+   * Generate SVG placeholder for avatar
    */
   private generateAvatarSVG(avatarData: AvatarResponse): string {
     const { bodyColors, playerAvatarType } = avatarData;
