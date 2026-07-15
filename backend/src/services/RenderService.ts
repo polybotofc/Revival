@@ -162,22 +162,33 @@ export class RenderService {
    * Parse Base64 PNG from RCC stdout
    */
   private parseBase64FromOutput(output: string): string | null {
-    const patterns = [
-      /return\s+"([A-Za-z0-9+/=]{500,})"/,
-      /THUMBNAIL:([A-Za-z0-9+/=]{500,})/,
-      /([A-Za-z0-9+/=]{5000,})/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = output.match(pattern);
-      if (match && match[1]) {
-        const potentialBase64 = match[1];
-        if (this.isValidBase64Png(potentialBase64)) {
-          return potentialBase64;
-        }
-      }
+    // Pattern: Capture Base64 between THUMBNAIL_START and THUMBNAIL_END
+    const startMarker = 'THUMBNAIL_START';
+    const endMarker = 'THUMBNAIL_END';
+    
+    const startIdx = output.indexOf(startMarker);
+    if (startIdx === -1) {
+      return null;
     }
-
+    
+    const endIdx = output.indexOf(endMarker, startIdx + startMarker.length);
+    if (endIdx === -1) {
+      return null;
+    }
+    
+    // Extract Base64 string between markers
+    const base64 = output.substring(startIdx + startMarker.length, endIdx).trim();
+    
+    // Validate it's not empty and looks like Base64
+    if (base64.length < 1000 || !/^[A-Za-z0-9+/=]+$/.test(base64)) {
+      return null;
+    }
+    
+    // Validate PNG magic bytes
+    if (this.isValidBase64Png(base64)) {
+      return base64;
+    }
+    
     return null;
   }
 
@@ -187,21 +198,22 @@ export class RenderService {
   private isValidBase64Png(base64: string): boolean {
     try {
       const decoded = Buffer.from(base64, 'base64');
+      
+      // Must be at least 1000 chars to be a real PNG thumbnail
+      if (decoded.length < 1000) {
+        return false;
+      }
+      
+      // Check PNG magic bytes: 89 50 4E 47 (iVBOR in Base64)
       if (decoded.length > 4) {
         const isPng = decoded[0] === 0x89 && 
                       decoded[1] === 0x50 && 
                       decoded[2] === 0x4E && 
                       decoded[3] === 0x47;
-        if (isPng) {
-          return true;
-        }
+        return isPng;
       }
       
-      if (base64.length < 1000) {
-        return false;
-      }
-      
-      return true;
+      return false;
     } catch {
       return false;
     }
