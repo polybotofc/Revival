@@ -2,7 +2,7 @@ import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { avatarService } from './AvatarService.js';
 import type { AvatarResponse, RenderResult } from '../types/index.js';
-import { spawn } from 'child_process';
+import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -104,68 +104,47 @@ export class RenderService {
         cwd: rccDir
       });
 
-      // Build command - use spawn directly without shell
+      // Use execFile which is better for Windows
       const exePath = config.rcc.executablePath;
-      
-      // Use spawn without shell - Node.js handles Windows paths natively
-      const rccProcess = spawn(exePath, [
+      const args = [
         '-console',
         '-verbose',
         '-localtest',
         jobFilePath,
         '-settingsfile',
         'DevSettingsFile.json',
-      ], {
+      ];
+
+      execFile(exePath, args, {
         cwd: rccDir,
-        windowsHide: false,
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      rccProcess.stdout?.on('data', (data: Buffer) => {
-        const text = data.toString();
-        stdout += text;
-        
-        if (text.includes('ThumbnailGenerator::click() success')) {
-          logger.info('RCC reported success');
-        }
-      });
-
-      rccProcess.stderr?.on('data', (data: Buffer) => {
-        stderr += data.toString();
-      });
-
-      rccProcess.on('error', (error: Error) => {
-        logger.error('RCC process error', { error: error.message });
-        resolve(null);
-      });
-
-      rccProcess.on('close', (code: number | null) => {
-        logger.debug('RCC process exited', { code });
-        
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large output
+      }, (error, stdout, stderr) => {
         // Clean up job file
         try {
           fs.unlinkSync(jobFilePath);
         } catch { /* ignore cleanup errors */ }
+
+        if (error) {
+          logger.error('RCC process error', { error: error.message, stderr: stderr?.substring(0, 500) });
+          resolve(null);
+          return;
+        }
+
+        logger.debug('RCC process completed', { stdoutLength: stdout?.length || 0 });
         
-        const base64Image = this.parseBase64FromOutput(stdout);
+        const base64Image = this.parseBase64FromOutput(stdout || '');
         
         if (base64Image) {
           logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
           resolve(base64Image);
         } else {
           if (stderr) {
-            logger.warn('RCC stderr', { stderr: stderr.substring(0, 500) });
+            logger.warn('RCC stderr', { stderr: stderr?.substring(0, 500) });
           }
           resolve(null);
         }
       });
-
-      setTimeout(() => {
-        rccProcess.kill();
-        resolve(null);
-      }, 60000);
     });
   }
 
