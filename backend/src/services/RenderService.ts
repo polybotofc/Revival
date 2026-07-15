@@ -109,10 +109,9 @@ export class RenderService {
         outputFile
       });
 
-      // Use exec with output redirection
-      // exec uses shell which handles redirection properly
-      // Use start /wait to ensure process completes before returning
-      const command = `start /wait /b cmd /c "\"${exePath}\" -console -verbose -localtest \"${jobFilePath}\" -settingsfile DevSettingsFile.json > \"${outputFile}\" 2>&1"`;
+      // Use exec with cmd /c directly - no start command
+      // cmd /c runs the command and waits for it to complete
+      const command = `cmd /c "\"${exePath}\" -console -verbose -localtest \"${jobFilePath}\" -settingsfile DevSettingsFile.json > \"${outputFile}\" 2>&1"`;
 
       logger.info('Executing command', { command });
 
@@ -126,7 +125,7 @@ export class RenderService {
           logger.error('RCC process error', { error: error.message });
         }
 
-        // Give extra time for file to be written
+        // Wait for file to be written
         setTimeout(() => {
           try {
             if (fs.existsSync(outputFile)) {
@@ -161,7 +160,7 @@ export class RenderService {
             logger.error('Error reading output file', { error: String(err) });
             resolve(null);
           }
-        }, 5000);
+        }, 3000);
       });
     });
   }
