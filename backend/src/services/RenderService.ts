@@ -87,6 +87,7 @@ export class RenderService {
 
   /**
    * Spawn RCC process and capture Base64 PNG from stdout
+   * Uses a batch script to redirect console output to a temp file
    */
   private spawnRCCAndCapture(_userId: number, jobFilePath: string): Promise<string | null> {
     return new Promise((resolve) => {
@@ -97,72 +98,80 @@ export class RenderService {
       }
 
       const rccDir = path.dirname(config.rcc.executablePath);
-      logger.info('Spawning RCC process', { 
-        executable: config.rcc.executablePath,
-        jobFile: jobFilePath,
-        cwd: rccDir
-      });
-
-      // Use spawn with shell: true - let shell handle the command string
-      const { spawn } = require('child_process');
       const exePath = config.rcc.executablePath;
+      const outputFile = path.join(rccDir, `rcc_output_${Date.now()}.txt`);
       
-      // Command without quotes - path has no spaces now
-      const command = `${exePath} -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
-
-      logger.info('Executing command', { command });
-
-      const child = spawn(command, [], {
+      logger.info('Spawning RCC process', { 
+        executable: exePath,
+        jobFile: jobFilePath,
         cwd: rccDir,
-        shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        outputFile
       });
 
-      let stdout = '';
-      let stderr = '';
+      // Create batch script to capture output
+      const batchScript = `@echo off
+"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json > "${outputFile}" 2>&1
+`;
+      const batchPath = path.join(rccDir, `run_rcc_${Date.now()}.bat`);
+      fs.writeFileSync(batchPath, batchScript);
 
-      child.stdout?.on('data', (data: Buffer) => {
-        const text = data.toString();
-        stdout += text;
-        if (text.includes('ThumbnailGenerator::click() success')) {
-          logger.info('RCC reported success');
-        }
-      });
+      logger.info('Executing batch script', { batchPath });
 
-      child.stderr?.on('data', (data: Buffer) => {
-        stderr += data.toString();
+      const { spawn } = require('child_process');
+      const child = spawn('cmd.exe', ['/c', batchPath], {
+        cwd: rccDir,
+        shell: false,
       });
 
       child.on('error', (error: Error) => {
-        logger.error('RCC process error', { error: error.message });
+        logger.error('Batch script error', { error: error.message });
+        // Clean up
+        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
+        try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
         resolve(null);
       });
 
       child.on('close', (code: number | null) => {
         logger.debug('RCC process exited', { code });
         
-        // Clean up job file
-        try {
-          fs.unlinkSync(jobFilePath);
-        } catch { /* ignore cleanup errors */ }
+        // Clean up batch script
+        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
+        try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
 
-        const base64Image = this.parseBase64FromOutput(stdout);
-        
-        if (base64Image) {
-          logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
-          resolve(base64Image);
-        } else {
-          logger.warn('No Base64 PNG found in RCC output', { 
-            stdoutLength: stdout.length,
-            stderr: stderr.substring(0, 200)
-          });
-          resolve(null);
-        }
+        // Read output file
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(outputFile)) {
+              const output = fs.readFileSync(outputFile, 'utf8');
+              fs.unlinkSync(outputFile);
+              
+              const base64Image = this.parseBase64FromOutput(output);
+              
+              if (base64Image) {
+                logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
+                resolve(base64Image);
+              } else {
+                logger.warn('No Base64 PNG found in RCC output file', { 
+                  outputLength: output.length,
+                  outputPreview: output.substring(0, 500)
+                });
+                resolve(null);
+              }
+            } else {
+              logger.warn('Output file not found', { outputFile });
+              resolve(null);
+            }
+          } catch (err) {
+            logger.error('Error reading output file', { error: String(err) });
+            resolve(null);
+          }
+        }, 2000); // Wait 2 seconds for file to be written
       });
 
       // Timeout after 60 seconds
       setTimeout(() => {
         child.kill();
+        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
         resolve(null);
       }, 60000);
     });
