@@ -39,10 +39,6 @@ export class RenderService {
       const jobFilePath = await this.createJobFile(userId);
       const result = await this.spawnRCCAndCapture(userId, jobFilePath);
 
-      try {
-        fs.unlinkSync(jobFilePath);
-      } catch { /* ignore cleanup errors */ }
-
       if (result) {
         logger.info('Thumbnail generated via RCC', { userId });
         return {
@@ -62,6 +58,7 @@ export class RenderService {
 
   /**
    * Create RCC job file
+   * Creates the job file in D:\New folder to avoid path issues with spaces
    */
   private async createJobFile(userId: number): Promise<string> {
     const jobConfig = [{
@@ -79,8 +76,10 @@ export class RenderService {
       Arguments: {},
     }];
 
-    const jobId = `avatar_${userId}_${Date.now()}`;
-    const jobFilePath = path.resolve(this.thumbnailDir, `job_${jobId}.json`);
+    // Create job file in D:\New folder to avoid path issues
+    const rccDir = path.dirname(config.rcc.executablePath);
+    const jobId = `thumb_${userId}_${Date.now()}`;
+    const jobFilePath = path.join(rccDir, `job_${jobId}.json`);
     fs.writeFileSync(jobFilePath, JSON.stringify(jobConfig, null, 2));
     
     logger.debug('Created RCC job file', { jobId, jobFilePath });
@@ -98,20 +97,20 @@ export class RenderService {
         return;
       }
 
+      const rccDir = path.dirname(config.rcc.executablePath);
       logger.info('Spawning RCC process', { 
         executable: config.rcc.executablePath,
-        jobFile: jobFilePath
+        jobFile: jobFilePath,
+        cwd: rccDir
       });
 
-      const rccProcess = spawn(config.rcc.executablePath, [
-        '-console',
-        '-verbose',
-        '-localtest',
-        jobFilePath,
-        '-settingsfile',
-        'DevSettingsFile.json',
-      ], {
-        cwd: path.dirname(config.rcc.executablePath),
+      // Build command with proper quoting for Windows
+      const exePath = config.rcc.executablePath;
+      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json`;
+
+      const rccProcess = spawn('cmd.exe', ['/c', command], {
+        cwd: rccDir,
+        shell: false,
       });
 
       let stdout = '';
@@ -121,7 +120,7 @@ export class RenderService {
         const text = data.toString();
         stdout += text;
         
-        if (stdout.includes('ThumbnailGenerator::click() success')) {
+        if (text.includes('ThumbnailGenerator::click() success')) {
           logger.info('RCC reported success');
         }
       });
@@ -137,6 +136,11 @@ export class RenderService {
 
       rccProcess.on('close', (code: number | null) => {
         logger.debug('RCC process exited', { code });
+        
+        // Clean up job file
+        try {
+          fs.unlinkSync(jobFilePath);
+        } catch { /* ignore cleanup errors */ }
         
         const base64Image = this.parseBase64FromOutput(stdout);
         
