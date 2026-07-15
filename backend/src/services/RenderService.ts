@@ -111,14 +111,14 @@ export class RenderService {
 
       // Use exec with output redirection
       // exec uses shell which handles redirection properly
-      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json > "${outputFile}" 2>&1`;
+      // Use start /wait to ensure process completes before returning
+      const command = `start /wait /b cmd /c "\"${exePath}\" -console -verbose -localtest \"${jobFilePath}\" -settingsfile DevSettingsFile.json > \"${outputFile}\" 2>&1"`;
 
       logger.info('Executing command', { command });
 
       exec(command, {
         cwd: rccDir,
-        timeout: 60000,
-        maxBuffer: 10 * 1024 * 1024,
+        timeout: 120000,
       }, (error, _stdout, _stderr) => {
         try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
 
@@ -126,23 +126,31 @@ export class RenderService {
           logger.error('RCC process error', { error: error.message });
         }
 
-        // Read output file
+        // Give extra time for file to be written
         setTimeout(() => {
           try {
             if (fs.existsSync(outputFile)) {
-              const output = fs.readFileSync(outputFile, 'utf8');
-              fs.unlinkSync(outputFile);
+              const stats = fs.statSync(outputFile);
+              logger.info('Output file exists', { size: stats.size, path: outputFile });
               
-              const base64Image = this.parseBase64FromOutput(output);
-              
-              if (base64Image) {
-                logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
-                resolve(base64Image);
+              if (stats.size > 0) {
+                const output = fs.readFileSync(outputFile, 'utf8');
+                fs.unlinkSync(outputFile);
+                
+                const base64Image = this.parseBase64FromOutput(output);
+                
+                if (base64Image) {
+                  logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
+                  resolve(base64Image);
+                } else {
+                  logger.warn('No Base64 PNG found in output file', { 
+                    outputLength: output.length,
+                    outputPreview: output.substring(0, 2000)
+                  });
+                  resolve(null);
+                }
               } else {
-                logger.warn('No Base64 PNG found in output file', { 
-                  outputLength: output.length,
-                  outputPreview: output.substring(0, 1000)
-                });
+                logger.warn('Output file is empty', { outputFile });
                 resolve(null);
               }
             } else {
@@ -153,7 +161,7 @@ export class RenderService {
             logger.error('Error reading output file', { error: String(err) });
             resolve(null);
           }
-        }, 3000);
+        }, 5000);
       });
     });
   }
