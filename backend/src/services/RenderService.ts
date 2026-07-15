@@ -100,67 +100,49 @@ export class RenderService {
 
       const rccDir = path.dirname(config.rcc.executablePath);
       const exePath = config.rcc.executablePath;
-      const outputFile = path.join(rccDir, `rcc_output_${Date.now()}.txt`);
       
       logger.info('Spawning RCC process', { 
         executable: exePath,
         jobFile: jobFilePath,
-        cwd: rccDir,
-        outputFile
+        cwd: rccDir
       });
 
-      // Use exec with cmd /c directly - no start command
-      // cmd /c runs the command and waits for it to complete
-      const command = `cmd /c "\"${exePath}\" -console -verbose -localtest \"${jobFilePath}\" -settingsfile DevSettingsFile.json > \"${outputFile}\" 2>&1"`;
+      // Simpler approach - use batch file to run the command
+      const batchContent = `@echo off
+"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json
+`;
+      const batchPath = path.join(rccDir, `run_${Date.now()}.bat`);
+      fs.writeFileSync(batchPath, batchContent);
 
-      logger.info('Executing command', { command });
+      logger.info('Executing batch file', { batchPath, content: batchContent });
 
-      exec(command, {
+      exec(batchPath, {
         cwd: rccDir,
         timeout: 120000,
-      }, (error, _stdout, _stderr) => {
+      }, (error, stdout, stderr) => {
+        // Clean up files
+        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
         try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
 
         if (error) {
-          logger.error('RCC process error', { error: error.message });
+          logger.error('RCC batch error', { error: error.message, stderr: stderr?.substring(0, 500) });
         }
 
-        // Wait for file to be written
-        setTimeout(() => {
-          try {
-            if (fs.existsSync(outputFile)) {
-              const stats = fs.statSync(outputFile);
-              logger.info('Output file exists', { size: stats.size, path: outputFile });
-              
-              if (stats.size > 0) {
-                const output = fs.readFileSync(outputFile, 'utf8');
-                fs.unlinkSync(outputFile);
-                
-                const base64Image = this.parseBase64FromOutput(output);
-                
-                if (base64Image) {
-                  logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
-                  resolve(base64Image);
-                } else {
-                  logger.warn('No Base64 PNG found in output file', { 
-                    outputLength: output.length,
-                    outputPreview: output.substring(0, 2000)
-                  });
-                  resolve(null);
-                }
-              } else {
-                logger.warn('Output file is empty', { outputFile });
-                resolve(null);
-              }
-            } else {
-              logger.warn('Output file not found', { outputFile });
-              resolve(null);
-            }
-          } catch (err) {
-            logger.error('Error reading output file', { error: String(err) });
-            resolve(null);
-          }
-        }, 3000);
+        const output = (stdout || '') + (stderr || '');
+        logger.info('RCC output received', { outputLength: output.length });
+
+        const base64Image = this.parseBase64FromOutput(output);
+        
+        if (base64Image) {
+          logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
+          resolve(base64Image);
+        } else {
+          logger.warn('No Base64 PNG found', { 
+            outputLength: output.length,
+            outputPreview: output.substring(0, 2000)
+          });
+          resolve(null);
+        }
       });
     });
   }
