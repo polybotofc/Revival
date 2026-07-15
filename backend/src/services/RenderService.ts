@@ -2,6 +2,7 @@ import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 import { avatarService } from './AvatarService.js';
 import type { AvatarResponse, RenderResult } from '../types/index.js';
+import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -87,7 +88,7 @@ export class RenderService {
 
   /**
    * Spawn RCC process and capture Base64 PNG from stdout
-   * Uses a batch script to redirect console output to a temp file
+   * Uses exec with output redirection to capture GUI app output
    */
   private spawnRCCAndCapture(_userId: number, jobFilePath: string): Promise<string | null> {
     return new Promise((resolve) => {
@@ -108,35 +109,22 @@ export class RenderService {
         outputFile
       });
 
-      // Create batch script to capture output
-      const batchScript = `@echo off
-"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json > "${outputFile}" 2>&1
-`;
-      const batchPath = path.join(rccDir, `run_rcc_${Date.now()}.bat`);
-      fs.writeFileSync(batchPath, batchScript);
+      // Use exec with output redirection
+      // exec uses shell which handles redirection properly
+      const command = `"${exePath}" -console -verbose -localtest "${jobFilePath}" -settingsfile DevSettingsFile.json > "${outputFile}" 2>&1`;
 
-      logger.info('Executing batch script', { batchPath });
+      logger.info('Executing command', { command });
 
-      const { spawn } = require('child_process');
-      const child = spawn('cmd.exe', ['/c', batchPath], {
+      exec(command, {
         cwd: rccDir,
-        shell: false,
-      });
-
-      child.on('error', (error: Error) => {
-        logger.error('Batch script error', { error: error.message });
-        // Clean up
-        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024,
+      }, (error, _stdout, _stderr) => {
         try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
-        resolve(null);
-      });
 
-      child.on('close', (code: number | null) => {
-        logger.debug('RCC process exited', { code });
-        
-        // Clean up batch script
-        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
-        try { fs.unlinkSync(jobFilePath); } catch { /* ignore */ }
+        if (error) {
+          logger.error('RCC process error', { error: error.message });
+        }
 
         // Read output file
         setTimeout(() => {
@@ -151,9 +139,9 @@ export class RenderService {
                 logger.info('Found Base64 PNG in RCC output', { length: base64Image.length });
                 resolve(base64Image);
               } else {
-                logger.warn('No Base64 PNG found in RCC output file', { 
+                logger.warn('No Base64 PNG found in output file', { 
                   outputLength: output.length,
-                  outputPreview: output.substring(0, 500)
+                  outputPreview: output.substring(0, 1000)
                 });
                 resolve(null);
               }
@@ -165,15 +153,8 @@ export class RenderService {
             logger.error('Error reading output file', { error: String(err) });
             resolve(null);
           }
-        }, 2000); // Wait 2 seconds for file to be written
+        }, 3000);
       });
-
-      // Timeout after 60 seconds
-      setTimeout(() => {
-        child.kill();
-        try { fs.unlinkSync(batchPath); } catch { /* ignore */ }
-        resolve(null);
-      }, 60000);
     });
   }
 
