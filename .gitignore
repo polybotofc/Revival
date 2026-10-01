@@ -23,3 +23,4 @@ game-servers.json
 
 # Local data directories
 data/
+__pycache__

@@ -16,12 +16,10 @@ public class GamesService : ServiceBase, IService
 {
     private GameServerService gameServer = new();
     private SignService sign = new();
-    //ugh
+    // Only the 2021 (2021M) client is supported. Adding an older client here requires a
+    // matching ticket format in SignService.GenerateClientTicket and join-script signer.
     public readonly Dictionary<long, string> clientVersionMap = new Dictionary<long, string>
     {
-        { 2017, "2017L" },
-        { 2018, "2018L" },
-        { 2020, "2020L" },
         { 2021, "2021M" }
     };
     public async Task<long> GetMaxPlayerCount(long placeId)
@@ -696,10 +694,6 @@ public class GamesService : ServiceBase, IService
 
     public readonly List<long> AllowedGameYears = new List<long>
     {
-        2017,
-        2018,
-        2019,
-        2020,
         2021
     };
 
@@ -1015,6 +1009,8 @@ public class GamesService : ServiceBase, IService
 
     public dynamic GetJoinScript(PlaceEntry placeInfo, UserInfo userInfo, GameServerDb jobInfo, string characterAppearanceUrl, string clientTicket, string membership, int accountAgeDays, bool generateTeleportJoin, string? cookie)
     {
+        if (placeInfo.year < 2021)
+            throw new InvalidOperationException("Only 2021+ places are supported");
         var formattedDateTime = DateTime.UtcNow.ToString("M/d/yyyy h:mm:ss tt");
         string chatStyle = "ClassicAndBubble";
         string ip = Configuration.GameServerIp;
@@ -1092,13 +1088,10 @@ public class GamesService : ServiceBase, IService
 
     public dynamic SignJoinScript(long year, dynamic joinScript)
     {
+        if (year < 2021)
+            throw new InvalidOperationException($"This year ({year}) is not supported; only 2021+ clients are supported");
 
-        return year switch
-        {
-            2015 or 2016 or 2017 => sign.SignJsonResponseForClientFromPrivateKey(joinScript),
-            2018 or 2019 or 2020 or 2021 => sign.SignJson2048(joinScript),
-            _ => "Fail"
-        };
+        return sign.SignJson2048(joinScript);
     }
     public async Task<IEnumerable<GameMediaEntry>> GetGameMedia(long placeId)
     {

@@ -159,11 +159,11 @@ These changes make the launcher and join flow match what a 2021 (`2021M`) client
 
 ## Client version target
 
-The repository originally targeted a **May 2018** client (`PR #1` / earlier work). This
-extraction targets the **2021 `2021M`** client as requested. Places with `year` set to
-2018 still resolve to `2018L` through the existing `clientVersionMap`, so both can
-coexist, but the launcher/join paths above are tuned for 2021. Confirm the intended
-target before merging if the deployment must stay on 2018.
+This extraction targets the **2021 `2021M`** client. **2021 is the minimum supported
+year:** `GamesService.SetYear`, `GetJoinScript`, `SignJoinScript`, `PlaceLauncher` and
+the launcher/join controllers all reject any place with `year < 2021`. The
+`clientVersionMap` only contains `2021 -> 2021M`; there is no fallback to older clients.
+Older PRs referenced a May 2018 target, which is intentionally superseded here.
 
 ## Notes
 

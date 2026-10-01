@@ -60,12 +60,6 @@ public static class RobloxSessionCookieWriter
 
     private static string? ResolveCookieDomain(HttpContext httpContext)
     {
-        var configuredBaseUrl = Roblox.Configuration.ShortBaseUrl;
-        if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
-        {
-            return "." + configuredBaseUrl.Trim().TrimStart('.');
-        }
-
         var host = httpContext.Request.Host.Host;
         if (string.IsNullOrWhiteSpace(host) ||
             string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
@@ -74,13 +68,30 @@ public static class RobloxSessionCookieWriter
             return null;
         }
 
-        var labels = host.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (labels.Length < 2)
+        // A cookie Domain must be a registrable domain, never a scheme or a bare host. If the
+        // configured base URL is not a real public domain (e.g. localhost), fall back to host-only.
+        var configuredBaseUrl = Roblox.Configuration.ShortBaseUrl;
+        if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
+        {
+            var configuredHost = configuredBaseUrl.Split(':')[0].Trim().TrimStart('.');
+            if (configuredHost.Contains('.') &&
+                !configuredHost.StartsWith("localhost", StringComparison.OrdinalIgnoreCase) &&
+                !System.Net.IPAddress.TryParse(configuredHost, out _))
+            {
+                var labels = configuredHost.Split('.', StringSplitOptions.RemoveEmptyEntries);
+                if (labels.Length >= 2)
+                {
+                    return "." + string.Join('.', labels[^2], labels[^1]);
+                }
+            }
+        }
+
+        var hostLabels = host.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (hostLabels.Length < 2)
         {
             return null;
         }
 
-        var rootDomain = string.Join('.', labels[^2], labels[^1]);
-        return "." + rootDomain;
+        return "." + string.Join('.', hostLabels[^2], hostLabels[^1]);
     }
 }

@@ -27,18 +27,28 @@ public static class RobloxWebsiteBuilderExtensions
         Roblox.Services.Cache.Configure(options.Redis, options.RedisAuthentication);
 
         Roblox.Configuration.CdnBaseUrl = options.CdnBaseUrl;
-        Roblox.Configuration.AssetDirectory = options.Directories.Asset;
-        Roblox.Configuration.StorageDirectory = options.Directories.Storage;
-        Roblox.Configuration.ThumbnailsDirectory = options.Directories.Thumbnails;
-        Roblox.Configuration.GroupIconsDirectory = options.Directories.GroupIcons;
-        Roblox.Configuration.PublicDirectory = options.Directories.Public;
-        Roblox.Configuration.XmlTemplatesDirectory = options.Directories.XmlTemplates;
-        Roblox.Configuration.JsonDataDirectory = options.Directories.JsonData;
-        Roblox.Configuration.ScriptDirectory = options.Directories.ScriptsData;
-        Roblox.Configuration.AdminBundleDirectory = options.Directories.AdminBundle;
-        Roblox.Configuration.EconomyChatBundleDirectory = options.Directories.EconomyChatBundle;
-        Roblox.Configuration.BaseUrl = options.BaseUrl;
-        Roblox.Configuration.ShortBaseUrl = options.BaseUrl.Replace("https", "http").Replace("http://www.", "");
+        // Directories in config are relative to the content root. Resolve them to absolute
+        // paths and create them so the backend can start without a pre-populated wwwroot/data.
+        string ResolveDir(string path)
+        {
+            var full = Path.IsPathRooted(path)
+                ? path
+                : Path.GetFullPath(path, builder.Environment.ContentRootPath);
+            Directory.CreateDirectory(full);
+            return full;
+        }
+        Roblox.Configuration.AssetDirectory = ResolveDir(options.Directories.Asset);
+        Roblox.Configuration.StorageDirectory = ResolveDir(options.Directories.Storage);
+        Roblox.Configuration.ThumbnailsDirectory = ResolveDir(options.Directories.Thumbnails);
+        Roblox.Configuration.GroupIconsDirectory = ResolveDir(options.Directories.GroupIcons);
+        Roblox.Configuration.PublicDirectory = ResolveDir(options.Directories.Public);
+        Roblox.Configuration.XmlTemplatesDirectory = ResolveDir(options.Directories.XmlTemplates);
+        Roblox.Configuration.JsonDataDirectory = ResolveDir(options.Directories.JsonData);
+        Roblox.Configuration.ScriptDirectory = ResolveDir(options.Directories.ScriptsData);
+        Roblox.Configuration.AdminBundleDirectory = ResolveDir(options.Directories.AdminBundle);
+        Roblox.Configuration.EconomyChatBundleDirectory = ResolveDir(options.Directories.EconomyChatBundle);
+        Roblox.Configuration.BaseUrl = options.BaseUrl.TrimEnd('/');
+        Roblox.Configuration.ShortBaseUrl = ResolveShortBaseUrl(Roblox.Configuration.BaseUrl);
         Roblox.Configuration.HCaptchaPublicKey = options.HCaptcha.Public;
         Roblox.Configuration.HCaptchaPrivateKey = options.HCaptcha.Private;
         Roblox.Configuration.IsCdnEnabled = options.IsCdnEnabled;
@@ -72,7 +82,7 @@ public static class RobloxWebsiteBuilderExtensions
         Roblox.Configuration.InvisibleTurnstileSecretKey = options.InvisibleTurnstile.SecretKey;
         Roblox.Configuration.OpenRouterApiKey = options.AI.OpenRouterAPIKey;
         Roblox.Configuration.VerificationSecret = options.VerificationSecret;
-        Roblox.Configuration.LuaScriptsDirectory = options.Directories.RCCLuaScripts;
+        Roblox.Configuration.LuaScriptsDirectory = ResolveDir(options.Directories.RCCLuaScripts);
 
         var gameServerConfig = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -106,6 +116,18 @@ public static class RobloxWebsiteBuilderExtensions
         Roblox.Services.Signer.SignService.Setup();
 
         RenderingHandler.Configure(arbiterUrl, options.ArbiterAuthorization, options.Render.UseBinaryTransport);
+    }
+
+    private static string ResolveShortBaseUrl(string baseUrl)
+    {
+        // BaseUrl is a full origin (scheme + host). Downstream code interpolates ShortBaseUrl
+        // into host names like "api.{ShortBaseUrl}", so it must be the bare host, never the scheme.
+        var value = baseUrl;
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            value = uri.Host + (uri.IsDefaultPort ? string.Empty : ":" + uri.Port);
+        }
+        return value.Replace("http://", "").Replace("https://", "").TrimEnd('/').TrimStart('.');
     }
 
     public static IServiceCollection AddRobloxWebsiteServices(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)

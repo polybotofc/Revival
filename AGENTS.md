@@ -65,4 +65,6 @@ The SDK needs ICU. If it is unavailable, build with
 - The source is a legacy "vibecoded" codebase. Treat it as untrusted input and review
   security-sensitive changes carefully.
 - Client version mapping lives in `GamesService.clientVersionMap`
-  (`2021 -> 2021M`). 2018 places still resolve to `2018L`.
+  (`2021 -> 2021M`). **2021 is the minimum supported target.** Any place whose `year`
+  is below 2021 is rejected by `SetYear`, `GetJoinScript`, `SignJoinScript` and the
+  launcher/join controllers; there is no fallback to older clients.

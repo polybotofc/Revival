@@ -170,7 +170,7 @@ namespace Roblox.Website.Controllers
         {
             FeatureFlags.FeatureCheck(FeatureFlag.GamesEnabled);
             long year = await services.games.GetYear(request.placeId);
-            if (year != 2020 && year != 2021)
+            if (year < 2021)
             {
                 return new PlaceLaunchResponse()
                 {
@@ -425,6 +425,8 @@ namespace Roblox.Website.Controllers
                 throw new BadRequestException(1, "placeId does not match the requested job");
 
             PlaceEntry placeInfo = (await services.games.MultiGetPlaceDetails(new[] { placeId })).First();
+            if (placeInfo.year < 2021)
+                throw new BadRequestException(1, "This place targets an unsupported client version.");
             // Check place privacy
             if (!await services.games.CanUserJoinUniverse(userId, placeInfo.builderId, placeInfo.universeId))
                 throw new ForbiddenException(1, "You cannot join this game, you do not have permission.");
@@ -461,7 +463,7 @@ namespace Roblox.Website.Controllers
             
             var accountAgeDays = DateTime.UtcNow.Subtract(userInfo.created).Days;
             string membership = await services.users.GetUserMemberShipAsString(userId);
-            if (placeInfo.year != 2020 && placeInfo.year != 2021 && membership == "Premium")
+            if (placeInfo.year < 2021 && membership == "Premium")
             {
                 membership = "OutrageousBuildersClub";
             }

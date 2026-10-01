@@ -138,6 +138,17 @@ def unquote(s):
     return s
 
 
+def eval_int(expr, default):
+    """Evaluate a numeric literal or simple arithmetic expression (e.g. 1024*1024)."""
+    expr = unquote(expr).strip()
+    if re.fullmatch(r"[0-9+\-*/(). ]+", expr or ""):
+        try:
+            return str(int(eval(expr, {"__builtins__": {}}, {})))
+        except Exception:
+            return default
+    return default
+
+
 # knex column method -> (postgres type, extra)
 def column_type(method, args):
     if method in ("bigIncrements", "bigIncrements"):
@@ -153,7 +164,7 @@ def column_type(method, args):
     if method == "smallint":
         return "SMALLINT", {}
     if method == "string":
-        length = unquote(args[1]) if len(args) > 1 else "255"
+        length = eval_int(args[1], "255") if len(args) > 1 else "255"
         return "VARCHAR(%s)" % length, {}
     if method == "text":
         return "TEXT", {}
@@ -385,8 +396,17 @@ for path in files:
             else:
                 out.append('ALTER TABLE "%s" ADD COLUMN IF NOT EXISTS %s;' % (table, col))
     # raw CREATE INDEX
-    for m in re.finditer(r"knex\.raw\(\s*[`'\"]([^`'\"]*CREATE INDEX[^`'\"]*)[`'\"]", text, re.I):
-        indexes.append(m.group(1).strip().rstrip(";") + ";")
+    for m in re.finditer(r"knex\.raw\(\s*([`'\"])(.*?)\1", text, re.I | re.S):
+        sql = m.group(2)
+        if "CREATE INDEX" not in sql.upper():
+            continue
+        # Template-literal interpolations (e.g. "${indexName}") cannot be resolved
+        # statically; drop the placeholder so Postgres assigns an index name.
+        sql = re.sub(r'"\s*\$\{[^}]*\}\s*"', "", sql)
+        sql = re.sub(r"\$\{[^}]*\}", "", sql)
+        sql = sql.strip().rstrip(";")
+        if sql:
+            indexes.append(sql + ";")
 
 out.append("")
 out.append("-- Indexes")

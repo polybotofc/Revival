@@ -74,48 +74,30 @@ public static class RobloxWebsiteApplicationExtensions
             ctx.Context.Response.Headers.Remove(HeaderNames.LastModified);
         };
 
-        app.UseStaticFiles(new StaticFileOptions
+        // Static asset subdirectories may be empty on a fresh checkout; create them so the
+        // file providers have a valid root to watch.
+        StaticFileOptions StaticDir(string directory, string requestPath)
         {
-            FileProvider = new PhysicalFileProvider(Roblox.Configuration.PublicDirectory + "css/Roblox/"),
-            RequestPath = "/css",
-            OnPrepareResponse = prepareResponseForCache,
-        });
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(Roblox.Configuration.PublicDirectory + "js/"),
-            RequestPath = "/js",
-            OnPrepareResponse = prepareResponseForCache,
-        });
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(Roblox.Configuration.PublicDirectory + "UnsecuredContent/"),
-            RequestPath = "/UnsecuredContent",
-            OnPrepareResponse = prepareResponseForCache,
-        });
+            Directory.CreateDirectory(directory);
+            return new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(directory),
+                RequestPath = requestPath,
+                OnPrepareResponse = prepareResponseForCache,
+            };
+        }
+
+        app.UseStaticFiles(StaticDir(Roblox.Configuration.PublicDirectory + "css/Roblox/", "/css"));
+        app.UseStaticFiles(StaticDir(Roblox.Configuration.PublicDirectory + "js/", "/js"));
+        app.UseStaticFiles(StaticDir(Roblox.Configuration.PublicDirectory + "UnsecuredContent/", "/UnsecuredContent"));
 
         if (string.IsNullOrWhiteSpace(Roblox.Configuration.CdnBaseUrl))
         {
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new PhysicalFileProvider(Roblox.Configuration.ThumbnailsDirectory),
-                RequestPath = "/images/thumbnails",
-                OnPrepareResponse = prepareResponseForCache,
-            });
-
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new PhysicalFileProvider(Roblox.Configuration.GroupIconsDirectory),
-                RequestPath = "/images/groups",
-                OnPrepareResponse = prepareResponseForCache,
-            });
+            app.UseStaticFiles(StaticDir(Roblox.Configuration.ThumbnailsDirectory, "/images/thumbnails"));
+            app.UseStaticFiles(StaticDir(Roblox.Configuration.GroupIconsDirectory, "/images/groups"));
         }
 
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(Roblox.Configuration.PublicDirectory + "img/"),
-            RequestPath = "/img",
-            OnPrepareResponse = prepareResponseForCache,
-        });
+        app.UseStaticFiles(StaticDir(Roblox.Configuration.PublicDirectory + "img/", "/img"));
 
         app.UseRequestDecompression();
         app.UseRobloxSessionMiddleware();

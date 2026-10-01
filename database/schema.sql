@@ -703,7 +703,7 @@ CREATE TABLE IF NOT EXISTS "asset_datastore" (
   "scope" VARCHAR(255) NOT NULL,
   "key" VARCHAR(255) NOT NULL,
   "name" VARCHAR(255) NOT NULL,
-  "value" VARCHAR(1024*1024) NOT NULL,
+  "value" VARCHAR(1048576) NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -858,7 +858,7 @@ ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "verified" BOOLEAN NOT NULL DEFAULT 
 ALTER TABLE "join_application" ADD COLUMN IF NOT EXISTS "discord_id" VARCHAR(512);
 ALTER TABLE "join_application" ADD COLUMN IF NOT EXISTS "discord_username" VARCHAR(32);
 ALTER TABLE "join_application" ADD COLUMN IF NOT EXISTS "reffered_by" INTEGER;
-ALTER TABLE "asset_place" ADD COLUMN IF NOT EXISTS "year" BIGINT NOT NULL DEFAULT 2017;
+ALTER TABLE "asset_place" ADD COLUMN IF NOT EXISTS "year" BIGINT NOT NULL DEFAULT 2021;
 ALTER TABLE "asset_place" ADD COLUMN IF NOT EXISTS "roblox_place_id" BIGINT NOT NULL DEFAULT 1818;
 ALTER TABLE "user_settings" ADD COLUMN IF NOT EXISTS "join_privacy" INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE "user_settings" ADD COLUMN IF NOT EXISTS "avatar_page_style" INTEGER NOT NULL DEFAULT 1;
@@ -927,6 +927,13 @@ CREATE TABLE IF NOT EXISTS "ugc_request" (
   "decided_at" TIMESTAMP
 );
 
+ALTER TABLE "universe" ADD COLUMN IF NOT EXISTS "cloudedit" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "universe" ADD COLUMN IF NOT EXISTS "forcemorph_type" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "universe" ADD COLUMN IF NOT EXISTS "privacy_type" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "asset_server" ADD COLUMN IF NOT EXISTS "status" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "asset_server" ADD COLUMN IF NOT EXISTS "type" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "asset_server" ADD COLUMN IF NOT EXISTS "ping" BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE "asset_server" ADD COLUMN IF NOT EXISTS "fps" BIGINT NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS "donation_webhook_event" (
   "id" BIGSERIAL PRIMARY KEY,
   "provider" VARCHAR(32) NOT NULL,
@@ -1025,17 +1032,17 @@ CREATE INDEX ON "forum_post" ("id");
 CREATE INDEX ON "forum_post" ("thread_id", "id");
 CREATE INDEX ON "forum_post" ("user_id", "created_at");
 CREATE INDEX ON "forum_post" ("sub_category_id", "id");
-CREATE INDEX;
-CREATE INDEX;
-CREATE INDEX;
-CREATE INDEX;
+CREATE INDEX  ON "user_asset" ("asset_id", "price") WHERE "price" > 0 AND "price" IS NOT NULL;
+CREATE INDEX  ON "user_asset" ("asset_id");
+CREATE INDEX  ON "user_asset" ("asset_id", "id");
+CREATE INDEX  ON "user_transaction" ("user_asset_id") WHERE user_asset_id IS NOT NULL;
 CREATE INDEX ON "group" ("user_id");
 CREATE INDEX ON "group" ("name");
 CREATE INDEX ON "group_role" ("group_id");
 CREATE INDEX ON "group_user" ("group_role_id", "id");
 CREATE INDEX ON "group_user" ("user_id");
 CREATE INDEX ON "group_status" ("user_id");
-CREATE INDEX;
+CREATE INDEX "group_wall_id_idx" ON "group_wall" ("group_id", "id") WHERE "is_deleted" IS FALSE;
 CREATE INDEX ON "group_social_link" ("group_id");
 CREATE INDEX ON "asset" ("roblox_asset_id");
 CREATE INDEX ON "asset" ("asset_type");
@@ -1052,14 +1059,14 @@ CREATE INDEX ON "asset_icon" ("asset_id");
 CREATE INDEX ON "asset_advertisement" ("target_id", "target_type");
 CREATE INDEX ON "asset_advertisement" ("updated_at");
 CREATE INDEX ON "moderation_bad_username" ("username");
-CREATE INDEX;
-CREATE INDEX;
-CREATE INDEX;
+CREATE INDEX  ON "asset" ("creator_id", "creator_type") WHERE (is_for_sale OR is_limited);
+CREATE INDEX  ON "asset" ("creator_id", "creator_type", "asset_type") WHERE (is_for_sale OR is_limited);
+CREATE INDEX  ON "user_transaction" ("asset_id") WHERE (type = 1 AND sub_type = 1);
 CREATE INDEX ON "asset_favorite" ("asset_id");
 CREATE INDEX ON "asset_favorite" ("user_id");
-CREATE INDEX IF NOT EXISTS;
-CREATE INDEX IF NOT EXISTS;
-CREATE INDEX IF NOT EXISTS;
+CREATE INDEX IF NOT EXISTS "forum_post_thread_id" ON "forum_post" ("thread_id") WHERE (thread_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS "forum_post_subcategory_id" ON "forum_post" ("sub_category_id");
+CREATE INDEX IF NOT EXISTS "forum_post_subcategory_id_id_desc" ON "forum_post" ("sub_category_id", "id" desc);
 CREATE INDEX ON "user_permission" ("user_id");
 CREATE INDEX ON "user_conversation_participant" ("conversation_id");
 CREATE INDEX ON "user_conversation_participant" ("user_id");
