@@ -118,6 +118,44 @@ In a `Debug` build the app seeds a development account on first boot:
 ROBLOX : roblox_dev_pass
 ```
 
+## 4. Verify the 2021 join flow
+
+With the backend running, the flow can be exercised without a client binary. The
+`.ashx` endpoints treat any request whose `User-Agent` contains `roblox` as a client
+request.
+
+```bash
+BASE=http://127.0.0.1:5000
+
+# 1. Log in and keep the session cookie
+curl -s -c cookies.txt -X POST "$BASE/v1/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ROBLOX","password":"roblox_dev_pass"}'
+
+# 2. Ask the launcher for a job (needs a Ready asset_server row for the place)
+curl -s -b cookies.txt -A 'Roblox/WinInet' \
+  "$BASE/Game/PlaceLauncher.ashx?request=RequestGame&placeId=<PLACE_ID>"
+# -> {"jobId":...,"status":2,"joinScriptUrl":...,"authenticationUrl":...,
+#     "authenticationTicket":...}
+
+# 3. Redeem the ticket once at Negotiate (consumes it, issues a session cookie)
+curl -s -i -A 'Roblox/WinInet' "$BASE/Login/Negotiate.ashx?suggest=<TICKET>"
+
+# 4. Fetch the signed join script (peeks the ticket, does not consume it)
+curl -s -b cookies.txt -A 'Roblox/WinInet' \
+  "$BASE/Game/Join.ashx?placeId=<PLACE_ID>&ticket=<TICKET>&jobId=<JOB_ID>"
+```
+
+`PlaceLauncher.ashx` returns `status: 4` ("not active") for a place whose
+`asset.moderation_status` is not `1` or whose `asset_place.year` is below 2021.
+Starting the game server itself needs the arbiter/RCC; to test only the web join
+path you can insert a Ready row directly:
+
+```sql
+INSERT INTO asset_server (id, asset_id, ip, port, server_connection, type, status, ping, fps)
+VALUES (gen_random_uuid(), <PLACE_ID>, '127.0.0.1', 53640, '127.0.0.1:53640', 1, 2, 0, 0);
+```
+
 ## 2021 client / RCC adaptations
 
 These changes make the launcher and join flow match what a 2021 (`2021M`) client expects.
