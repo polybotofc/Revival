@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Secrets and machine-specific configuration
+appsettings.json
+appsettings.*.json
+!appsettings.template.json
+game-servers.json
+
+# Signing keys (private keys must never be committed)
+**/Keys/PrivateKeyBlob.txt
+**/Keys/PrivateKeyBlob.pem
+**/Keys/PrivateKey2048.pem
+**/Keys/PrivateKeyBlob2048.bin
+
+# Local data directories
+data/
