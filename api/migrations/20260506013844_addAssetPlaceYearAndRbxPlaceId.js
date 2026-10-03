@@ -1,7 +1,7 @@
 
 exports.up = function(knex) {
   return knex.schema.alterTable('asset_place', (table) => {
-    table.bigInteger('year').notNullable().defaultTo(2017);
+    table.bigInteger('year').notNullable().defaultTo(2021);
     table.bigInteger('roblox_place_id').notNullable().defaultTo(1818);
   });
 };
