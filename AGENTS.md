@@ -26,11 +26,16 @@ assets are intentionally **not** present.
 
 ```bash
 dotnet build Roblox.Website/Roblox.Website.csproj -c Release
-dotnet run --project Roblox.Website
+
+# Roblox.Website is the only runnable project (Sdk.Web). The rest are class libraries.
+# Run it from its own directory: WebApplication.CreateBuilder uses the CWD as the
+# content root, so `dotnet run --project Roblox.Website` from the repo root will not
+# find appsettings.json.
+cd Roblox.Website && dotnet run -c Debug
 ```
 
 - SDK is pinned to .NET 10 in `global.json`.
-- In a `Debug` build a dev account `ROBLox : roblox_dev_pass` is seeded on first boot.
+- In a `Debug` build a dev account `ROBLOX : roblox_dev_pass` is seeded on first boot.
 - PostgreSQL and Redis are required at runtime.
 
 ### Building in a minimal container

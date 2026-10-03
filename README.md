@@ -107,10 +107,22 @@ secrets.
 
 ## 3. Run the web backend
 
+The runnable project is **`Roblox.Website`** (an ASP.NET Core app). Everything in
+`Roblox.Web.Infrastructure`, `Roblox.Services`, etc. is a class library and cannot be
+run directly — you will see *"Ensure you have a runnable project type"* if you try.
+
+`Program.cs` uses `WebApplication.CreateBuilder(args)`, so the app's content root is
+the **current working directory**. Run it from inside `Roblox.Website/` or it will not
+find `appsettings.json`:
+
 ```bash
-dotnet restore
-dotnet run --project Roblox.Website
+cd Roblox.Website
+cp appsettings.template.json appsettings.json   # if you have not already
+dotnet run -c Debug
 ```
+
+(Do **not** run `dotnet run --project Roblox.Website` from the repository root: that
+starts with the repo root as the content root and the configuration would not load.)
 
 In a `Debug` build the app seeds a development account on first boot:
 
