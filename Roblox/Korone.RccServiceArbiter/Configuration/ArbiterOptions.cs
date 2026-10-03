@@ -44,7 +44,7 @@ public sealed class ArbiterOptions
 
 public sealed class ArbiterRenderOptions
 {
-    [Range(2000, 2100)] public int DefaultYear { get; set; } = 2018;
+    [Range(2000, 2100)] public int DefaultYear { get; set; } = 2021;
     [Range(1, 256)] public int MaxWorkers { get; set; } = 8;
     [Range(0, 256)] public int MinimumWarmWorkers { get; set; } = 3;
     [Range(1, 256)] public int MaximumIdleWorkers { get; set; } = 8;

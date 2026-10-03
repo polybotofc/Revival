@@ -93,17 +93,10 @@ public class SignService : ServiceBase
     {
         switch (year)
         {
-            case 2017:
-                return GenerateClientTicketV1(userId, username, jobId, characterAppearanceUrl);
-            case 2018:
-                return GenerateClientTicketV2(userId, username, jobId, characterAppearanceUrl);
-            case 2019:
-                return GenerateClientTicketV3(userId, username, jobId);
-            case 2020:
             case 2021:
                 return GenerateClientTicketV4(userId, username, characterAppearanceUrl, membership, jobId, accountAgeDays, placeId);
             default:
-                throw new InvalidOperationException($"This year does not exist");
+                throw new InvalidOperationException($"This year ({year}) is not supported; only the 2021 client is supported");
         }
     }
 

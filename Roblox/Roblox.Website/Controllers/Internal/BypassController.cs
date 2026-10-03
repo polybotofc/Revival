@@ -170,7 +170,7 @@ namespace Roblox.Website.Controllers
         {
             FeatureFlags.FeatureCheck(FeatureFlag.GamesEnabled);
             long year = await services.games.GetYear(request.placeId);
-            if (year != 2020 && year != 2021)
+            if (year != 2021)
             {
                 return new PlaceLaunchResponse()
                 {
@@ -434,10 +434,7 @@ namespace Roblox.Website.Controllers
             
             var accountAgeDays = DateTime.UtcNow.Subtract(userInfo.created).Days;
             string membership = await services.users.GetUserMemberShipAsString(userId);
-            if (placeInfo.year != 2020 && placeInfo.year != 2021 && membership == "Premium")
-            {
-                membership = "OutrageousBuildersClub";
-            }
+            // 2021 keeps the modern "Premium" membership label.
             string clientTicket = services.sign.GenerateClientTicket(placeInfo.year, userId, username, characterAppearanceUrl, membership, jobId, accountAgeDays, placeId);
             var joinScript = services.games.GetJoinScript(placeInfo, userInfo, jobInfo, characterAppearanceUrl, clientTicket, membership, accountAgeDays, GenerateTeleportJoin, PUPPYSECURITY);
 

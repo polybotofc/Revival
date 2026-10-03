@@ -24,9 +24,6 @@ namespace Roblox.Website.Controllers
         // For modern clients
         private static readonly HashSet<string> applicationNames = new HashSet<string>
         {
-            "RCCService2019",
-            "PCDesktopClient2019",
-            "RCCService2020",
             "PCStudioApp",
             "PCStudio221",
             "PCStudio223",
